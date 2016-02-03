@@ -20,7 +20,7 @@ public class Odometer extends Thread {
 	public Odometer(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, double rWheel, double dBase) {
 		x = 0.0;
 		y = 0.0;
-		theta = 0.0;
+		theta = 0.0; //start robot in positive x axis
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
 		this.rWheel = rWheel;
@@ -50,7 +50,7 @@ public class Odometer extends Thread {
 				oldTachoLeft = nowTachoLeft;
 				oldTachoRight = nowTachoRight;
 				dh = 0.5*(d1 + d2); //distance of base
-				d = d1 - d2; //arclength
+				d = d2 - d1; //arclength
 				theta += d/dBase; //d/rBase is the delta theta
 				x += dh * Math.sin(theta);
 				y += dh * Math.cos(theta);

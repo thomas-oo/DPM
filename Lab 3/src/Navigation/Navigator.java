@@ -12,15 +12,19 @@ public class Navigator extends Thread
 	//needs variables to store destination (x,y)
 	//needs variables to store theta that needs to be turned
 	//
-	private double destX;
-	private double destY;
+	private double[] destDistance = new double[2];
 	private double destTheta; //max is 359, min is 0
 	
+	private double[] nowDistance;
 	private double nowX;
 	private double nowY;
 	private double nowTheta; //max is 359, min is 0
 	
 	private boolean isNavigating;
+	
+	private Odometer odometer;
+	
+	private boolean caseUpdate;
 	
 	//Motors
 	private static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
@@ -30,7 +34,7 @@ public class Navigator extends Thread
 	//Constructor
 	public Navigator(Odometer odometer, EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, UltrasonicPoller usPoller) //not sure what to pass to constructor yet..
 	{
-		
+		this.odometer = odometer;
 	}
 	
 	enum State {INIT, TURNING, TRAVELLING};
@@ -46,6 +50,7 @@ public class Navigator extends Thread
 				if(isNavigating)
 				{
 					state = State.TURNING;
+					caseUpdate = true;
 				}
 				break;
 			case TURNING:
@@ -53,12 +58,33 @@ public class Navigator extends Thread
 				if(facingDest(destTheta))
 				{
 					state = State.TRAVELLING;
+					caseUpdate = true;
 				}
 				break;
 			case TRAVELLING:
-				doouble[] distance = odometer.getPosition;
+				odometer.getPosition(nowDistance, null);
+				if(!checkIfDone(nowDistance))
+				{
+					updateTravel();
+					caseUpdate = true;
+				}
+				else //Arrived
+				{
+					setSpeeds(0,0);
+					isNavigating = false;
+					state = State.INIT;
+					caseUpdate = false;
+				}
+				break;
 			}
-			
+			try
+			{
+				Thread.sleep(30);
+			}
+			catch(InterruptedException e)
+			{
+				e.printStackTrace();
+			}
 			//C O R E:
 			//call odometer getters to get nowX, nowY, nowTheta
 			//use destX and destY and nowX and nowY to calculate error
@@ -67,10 +93,43 @@ public class Navigator extends Thread
 			//once turned, 
 		}
 	}
+	private boolean facingDest(double destTheta) {
+		if(destTheta == nowTheta)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	private boolean checkIfDone(double[] nowDistance) {
+		// TODO Auto-generated method stub
+		
+		if(nowDistance[0] == destDistance[0])
+		{
+			if(nowDistance[1] == destDistance[1])
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
+	private void setSpeeds(int leftSpeed, int rightSpeed) 
+	{
+		leftMotor.setSpeed(leftSpeed);
+		rightMotor.setSpeed(rightSpeed);
+		
+	}
+	private void updateTravel() {
+		// TODO Auto-generated method stub
+		
+	}
 	public void travelTo(double x, double y)
 	{
-		destX = x;
-		destY = y;
+		destDistance[0] = x;
+		destDistance[1] = y;
 		destTheta = getDestAngle();
 		isNavigating = true;
 		
@@ -88,11 +147,74 @@ public class Navigator extends Thread
 	}
 	private double getDestAngle() //use destX and Y to calculate
 	{
+		//this works if errorX>0
+		
+		double errorX = destDistance[0] - nowDistance[0];
+		double errorY = destDistance[1] - nowDistance[1];
+		
+		if(errorX == 0)
+		{
+			if(errorY > 0)
+			{
+				return Math.PI;
+			}
+			else
+			{
+				return -(Math.PI)/2;
+			}
+		}
+		
+		if(errorY == 0)
+		{
+			if(errorX > 0)
+			{
+				return 0;
+			}
+			else
+			{
+				return Math.PI;
+			}
+		}
+		
+		if(errorX > 0)
+		{
+			return Math.atan(errorY/errorX);
+		}
+		else
+		{
+			if(errorY > 0)
+			{
+				return (Math.PI - Math.atan(errorY/errorX));
+			}
+			else
+				return (Math.PI + Math.atan(errorY/errorX));
+		}
 		
 	}
 
-	private void turnTo(double theta)
+	private void turnTo(double destTheta)
 	{
+		double turnTheta = destTheta - nowTheta;
+		
+		if(turnTheta >= -Math.PI && turnTheta <= Math.PI)
+		{
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+		}
+		if(turnTheta > -2*Math.PI && turnTheta < -Math.PI)
+		{
+			turnTheta = turnTheta + Math.PI;
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+		}
+		if(turnTheta>Math.PI && turnTheta<2*Math.PI)
+		{
+			turnTheta = turnTheta - Math.PI;
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+		}
+		
+		
 		//C O R E:
 		
 		//use theta to determine actual turn (efficient)
@@ -113,7 +235,16 @@ public class Navigator extends Thread
 	public boolean isTravelling() 
 	//returns true if another thread has called travelTo or turnTo
 	{
-		return true;
+		return caseUpdate;
+	}
+	
+	private static int convertDistance(double radius, double distance) {
+		return (int) ((180.0 * distance) / (Math.PI * radius));
+	}
+
+	private static int convertAngle(double radius, double width, double angle) { //hopefully works
+		return convertDistance(radius, angle*width/2);
+		
 	}
 
 }
