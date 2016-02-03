@@ -3,6 +3,7 @@ package Navigation;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
+
 //CLASS THAT ACTUALLY ROTATES MOTORS
 //note: timerlistener (as mentioned in instructions is basically just a timer given to a thread to run a cycle. it the time is over, switch task
 public class Navigator extends Thread
@@ -19,10 +20,12 @@ public class Navigator extends Thread
 	private double nowY;
 	private double nowTheta; //max is 359, min is 0
 	
+	private boolean isNavigating;
+	
 	//Motors
 	private static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
 	private static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
-	
+
 	
 	//Constructor
 	public Navigator(Odometer odometer, EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, UltrasonicPoller usPoller) //not sure what to pass to constructor yet..
@@ -30,21 +33,47 @@ public class Navigator extends Thread
 		
 	}
 	
+	enum State {INIT, TURNING, TRAVELLING};
+	
 	public void run()
 	{
+		State state = State.INIT;
 		while (true) //forward and angular error calculator.
 		{
+			switch(state)
+			{
+			case INIT:
+				if(isNavigating)
+				{
+					state = State.TURNING;
+				}
+				break;
+			case TURNING:
+				turnTo(destTheta);
+				if(facingDest(destTheta))
+				{
+					state = State.TRAVELLING;
+				}
+				break;
+			case TRAVELLING:
+				doouble[] distance = odometer.getPosition;
+			}
+			
 			//C O R E:
 			//call odometer getters to get nowX, nowY, nowTheta
 			//use destX and destY and nowX and nowY to calculate error
 			//use error to calculate destTheta
 			//pass destTheta to turnTo
-			
 			//once turned, 
 		}
 	}
-	private void travelTo(double x, double y)
+	public void travelTo(double x, double y)
 	{
+		destX = x;
+		destY = y;
+		destTheta = getDestAngle();
+		isNavigating = true;
+		
 		//C O R E:
 		
 		//use nowX/Y and destX/Y to determine destTheta
@@ -57,6 +86,11 @@ public class Navigator extends Thread
 		//when nearing destX/Y, slow down??
 		//setup a threshold to allow some deviation from destX/Y
 	}
+	private double getDestAngle() //use destX and Y to calculate
+	{
+		
+	}
+
 	private void turnTo(double theta)
 	{
 		//C O R E:
@@ -76,7 +110,7 @@ public class Navigator extends Thread
 		
 		//develop turning algorithm based on Lab 2's turning algo
 	}
-	private boolean isTravelling() 
+	public boolean isTravelling() 
 	//returns true if another thread has called travelTo or turnTo
 	{
 		return true;

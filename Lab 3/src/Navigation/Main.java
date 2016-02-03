@@ -32,7 +32,7 @@ public class Main
 		UltrasonicPoller usPoller = new UltrasonicPoller(usDistance, usData, pControl);							// the selected controller on each cycle
 		
 		Odometer odometer = new Odometer(leftMotor, rightMotor, rWheel, dBase);
-		odometer.start(); //test
+		odometer.start(); 
 		Navigator nav = new Navigator(odometer, leftMotor, rightMotor, usPoller);
 		nav.start();
 		completeCourse();
@@ -45,9 +45,9 @@ public class Main
 		for(int [] point : waypoints)
 		{
 			nav.travelTo(point[0], point[1]);
-			while(nav.isTravelling)
+			while(nav.isTravelling())
 			{
-				
+				Thread.sleep(500);
 			}
 		}
 	}
