@@ -18,6 +18,7 @@ public class Main
 	public static double dBase = 0;
 	public static int bandCenter = 0;
 	public static int bandWidth = 0;
+	private static Navigator nav;
 	
 	public static void main(String[] args) throws InterruptedException
 	{
@@ -31,7 +32,7 @@ public class Main
 		UltrasonicPoller usPoller = new UltrasonicPoller(usDistance, usData, pControl);							// the selected controller on each cycle
 		
 		Odometer odometer = new Odometer(leftMotor, rightMotor, rWheel, dBase);
-		odometer.start();
+		odometer.start(); //test
 		Navigator nav = new Navigator(odometer, leftMotor, rightMotor, usPoller);
 		nav.start();
 		completeCourse();

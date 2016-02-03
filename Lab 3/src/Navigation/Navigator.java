@@ -76,7 +76,7 @@ public class Navigator extends Thread
 		
 		//develop turning algorithm based on Lab 2's turning algo
 	}
-	private boolean isNavigating() 
+	private boolean isTravelling() 
 	//returns true if another thread has called travelTo or turnTo
 	{
 		return true;
