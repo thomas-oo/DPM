@@ -1,8 +1,8 @@
 package Navigation;
-
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
 public class PController {
+	
 	private final int bandCenter, bandWidth;
 	private final int motorStraight = 200, FILTER_OUT = 60; //old value was 20
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
