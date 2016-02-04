@@ -17,12 +17,12 @@ public class Odometer extends Thread {
 	private Object lock;
 
 	// default constructor
-	public Odometer(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, double rWheel, double dBase) {
+	public Odometer(double rWheel, double dBase) {
 		x = 0.0;
 		y = 0.0;
-		theta = 0.0; //start robot in positive x axis
-		this.leftMotor = leftMotor;
-		this.rightMotor = rightMotor;
+		theta = 0.0; //start robot in positive x axis (min is 0, max is 2Pi)
+		this.leftMotor = Main.leftMotor;
+		this.rightMotor = Main.rightMotor;
 		this.rWheel = rWheel;
 		this.dBase = dBase;
 		oldTachoLeft = 0;
@@ -51,6 +51,15 @@ public class Odometer extends Thread {
 				oldTachoRight = nowTachoRight;
 				dh = 0.5*(d1 + d2); //distance of base
 				d = d2 - d1; //arclength
+				if(theta < 0)
+				{
+					theta += 2 * Math.PI;
+				}
+				if(theta > 2*Math.PI)
+				{
+					theta -= 2 * Math.PI;
+
+				}
 				theta += d/dBase; //d/rBase is the delta theta
 				x += dh * Math.sin(theta);
 				y += dh * Math.cos(theta);
