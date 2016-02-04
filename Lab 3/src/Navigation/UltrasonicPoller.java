@@ -1,7 +1,9 @@
 package Navigation;
+
 import lejos.robotics.SampleProvider;
 
-public class UltrasonicPoller extends Thread{
+public class UltrasonicPoller {
+
 	private SampleProvider us;
 	private float[] usData;
 	private PController pControl;
@@ -24,5 +26,5 @@ public class UltrasonicPoller extends Thread{
 			try { Thread.sleep(50); } catch(Exception e){}		// Poor man's timed sampling
 		}
 	}
-
+	
 }
