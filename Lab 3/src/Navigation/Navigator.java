@@ -1,5 +1,6 @@
 package Navigation;
 
+import lejos.hardware.Button;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
@@ -16,13 +17,14 @@ public class Navigator extends Thread
 	private double nowY;
 	private double nowTheta; //max is 359, min is 0
 
-	private int thetaThreshold = 2;
-	private double destThreshold = 0.5;
+	private double thetaThreshold = 0.034906585;
+	private double destThreshold = 2;
 	
 	private boolean isNavigating; //used in state INIT, determines if we will switch state to TURNING //also if false, that means it has arrived.
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 
 	private Odometer odometer;
+	
 
 	//Constructor
 	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, Odometer odometer) //not sure what to pass to constructor yet..
@@ -53,25 +55,28 @@ public class Navigator extends Thread
 				}
 				break;
 			case TURNING:
-				
 				if (!facingDest(destTheta))
 				{
 					leftMotor.stop();
 					rightMotor.stop();
-					turnTo(destTheta); //turnTo turns until turns are fully complete.	
+					turnTo(destTheta);//turnTo turns until turns are fully complete.
 				}
 				else if(facingDest(destTheta))
 				{
+					System.out.println("facing destination");
 					state = State.TRAVELLING;
 				}
 				break;
 			case TRAVELLING:
-				/*if(!checkIfDone(nowDistance)) //not there yet
+				if(!checkIfDone(nowDistance)) //not there yet
 				{
-					//updateTravel(); //recalc where to turn and move (please implement)
-				}*/
+					System.out.println("Updating Travel");
+					updateTravel(); //recalc where to turn and move (please implement)
+				}
 				if (checkIfDone(nowDistance))
 				{
+					leftMotor.stop();
+					rightMotor.stop();
 					setSpeeds(0,0); //stop
 					isNavigating = false; //no long navigating, will allow main method to fetch next waypoint
 					state = State.INIT; //go back to init. (will not go to turning after as isNavigating is false)
@@ -85,8 +90,14 @@ public class Navigator extends Thread
 			catch(InterruptedException e)
 			{
 				e.printStackTrace();
-			} 
+			} 	
 		}
+	}
+
+
+	private void updateTravel() 
+	{
+		destTheta = getDestAngle();
 	}
 
 
@@ -103,11 +114,9 @@ public class Navigator extends Thread
 	}
 	private boolean checkIfDone(double[] nowDistance) //SETS NOWX TO BE NOWDISTANCE0, ETC, CHECKS IF NOWX AND Y ARE WITHIN DESTTHRESHOLD OF DESTDISTANCE[0],[1]
 	{
-		nowX = nowDistance[0];
-		nowY = nowDistance[1];
-		if(nowX > (destDistance[0] - destThreshold) && nowX < (destDistance[0] + destThreshold))
+		if((nowX > (destDistance[0] - destThreshold)) && (nowX < (destDistance[0] + destThreshold)))
 		{
-			if(nowY > (destDistance[1] - destThreshold) && nowY < (destDistance[1]+ destThreshold))
+			if((nowY > (destDistance[1] - destThreshold)) && (nowY < (destDistance[1]+ destThreshold)))
 			{
 				return true;
 			}
@@ -119,6 +128,7 @@ public class Navigator extends Thread
 	{
 		leftMotor.setSpeed(leftSpeed);
 		rightMotor.setSpeed(rightSpeed);
+		isNavigating();
 	}
 /*	private void updateTravel() //PLEASE IMPLEMENT.
 	{
@@ -140,21 +150,26 @@ public class Navigator extends Thread
 		{
 			if(errorY > 0)
 			{
+				System.out.println("a");
 				return 0.5 * Math.PI; //90
 			}
 			else
 			{
+				System.out.println("b");
 				return 1.5 * Math.PI; //270
 			}
 		}
 		else if(errorY == 0)
 		{
+			System.out.println("c");
 			if(errorX > 0)
 			{
+				System.out.println("d");
 				return 0.0; //0
 			}
 			else
 			{
+				System.out.println("e");
 				return Math.PI; //180
 			}
 		}
@@ -162,12 +177,15 @@ public class Navigator extends Thread
 		
 		else if(errorX > 0) 
 		{
+			System.out.println("f");
 			if(errorY > 0) //positive theta
 			{
+				System.out.println("g");
 				return Math.atan(errorY/errorX);
 			}
 			else //converts quadrant 4 into a positive theta
 			{
+				System.out.println("h");
 				return 2*Math.PI + Math.atan(errorY/errorX);
 			}
 		}
@@ -175,10 +193,12 @@ public class Navigator extends Thread
 		{
 			if(errorY > 0) //quad 2, positive theta
 			{
+				System.out.println("i");
 				return (Math.atan(errorY/errorX) + Math.PI);
 			}
 			else if(errorY < 0) //quad 3, positive theta
 			{
+				System.out.println("j");
 				return (Math.atan(errorY/errorX) + Math.PI);
 			}
 		}
@@ -194,22 +214,21 @@ public class Navigator extends Thread
 		//ROTATES UNTIL TURN IS COMPLETE.
 		if(turnTheta >= -Math.PI && turnTheta <= Math.PI)
 		{
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 		}
 		if(turnTheta < -Math.PI)
 		{
 			turnTheta = turnTheta + 2*Math.PI;
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 		}
 		if(turnTheta>Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 		}
-		
 		leftMotor.forward();
 		rightMotor.forward();
 	}
@@ -231,3 +250,4 @@ public class Navigator extends Thread
 		this.isNavigating = isNavigating;
 	}
 }
+

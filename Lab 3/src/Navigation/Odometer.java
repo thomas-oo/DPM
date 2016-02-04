@@ -61,8 +61,8 @@ public class Odometer extends Thread {
 
 				}
 				theta += d/dBase; //d/rBase is the delta theta
-				x += dh * Math.sin(theta);
-				y += dh * Math.cos(theta);
+				x += dh * Math.cos(theta);
+				y += dh * Math.sin(theta);
 			}
 
 			// this ensures that the odometer only runs once every period

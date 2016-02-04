@@ -30,33 +30,37 @@ public class Main
 		//SampleProvider usDistance = usSensor.getMode("Distance");	// usDistance provides samples from this instance
 
 		//float[] usData = new float[usDistance.sampleSize()];		// usData is the buffer in which data are returned
-		
+
 		//UltrasonicPoller usPoller = new UltrasonicPoller(usDistance, usData, pControl);							// the selected controller on each cycle
-		
+
 		Odometer odometer = new Odometer(rWheel, dBase);
 		final TextLCD t = LocalEV3.get().getTextLCD();
 		OdometryDisplay odometryDisplay = new OdometryDisplay(odometer,t);
-		Navigator nav = new Navigator(leftMotor, rightMotor, odometer);
+		nav = new Navigator(leftMotor, rightMotor, odometer);
 		odometer.start(); 
 		odometryDisplay.start();
 		nav.start();
 		completeCourse();
-		
-		
+
+
 	}
 	private static void completeCourse() throws InterruptedException
 	{
-		int[] [] waypoints = {{60,30}, {30,30}, {30,60}, {60,0}};
-		
-		for(int i = 0; i < waypoints.length; i++)
+		int [][] waypoints = {{60,30}, {30,30}, {30,60}, {60,0}};
+		for (int[]point:waypoints)
 		{
-			int[] point = waypoints[i];
-			nav.travelTo(point[0], point[1]); //sets destX and destY to destDistance[0],[1]. as well, sets isNavigating = true
+			nav.travelTo(point[0],point[1]); //sets destX and destY to destDistance[0],[1]. as well, sets isNavigating = true
 			while(nav.isNavigating())
 			{
 				Thread.sleep(500);
 			}
-			//arrived.
 		}
+
+		/*for(int i = 0; i < waypoints.length; i++)
+		{
+			int[] point = waypoints[i];
+			System.out.println(point[0]);
+			System.out.println(point[1]);*/
+		//arrived.
 	}
 }
