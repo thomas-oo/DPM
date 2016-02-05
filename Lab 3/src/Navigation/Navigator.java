@@ -5,7 +5,7 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 //note: timerlistener (as mentioned in instructions is basically just a timer given to a thread to run a cycle. it the time is over, switch task
 public class Navigator extends Thread
 {
-	private int forwardSpeed = 100;
+	private int forwardSpeed = 150;
 
 	private double[] destDistance = new double[2];
 	private double destTheta; //max is 359, min is 0
@@ -16,7 +16,7 @@ public class Navigator extends Thread
 	private double nowTheta; //max is 359, min is 0
 
 	private double thetaThreshold = 0.034906585;
-	private double destThreshold = 2;
+	private double destThreshold = 1;
 	
 	private boolean isNavigating; //used in state INIT, determines if we will switch state to TURNING //also if false, that means it has arrived.
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
@@ -32,7 +32,7 @@ public class Navigator extends Thread
 		this.rightMotor = rightMotor;
 	}
 
-	enum State {INIT, TURNING, TRAVELLING};
+	enum State {INIT,WALL,TURNING, TRAVELLING};
 
 	public void run()
 	{
@@ -139,7 +139,7 @@ public class Navigator extends Thread
 		double errorX = destDistance[0] - nowX;
 		double errorY = destDistance[1] - nowY;
 
-		if(errorX == 0) 
+		if(Math.abs(errorX) < destThreshold) //changed 
 		{
 			if(errorY > 0)
 			{
@@ -150,7 +150,7 @@ public class Navigator extends Thread
 				return 1.5 * Math.PI; //270
 			}
 		}
-		else if(errorY == 0)
+		else if(Math.abs(errorY) < destThreshold) //changed
 		{
 			if(errorX > 0)
 			{

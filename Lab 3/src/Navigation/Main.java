@@ -13,8 +13,10 @@ public class Main
 	//private static final Port usPort = LocalEV3.get().getPort("S2");
 	public static double rWheel = 2.15; //measure
 	public static double dBase = 16.2;
-	public static int bandCenter = 0;
-	public static int bandWidth = 0;
+	public static int bandCenter = 20;
+	public static int bandWidth = 3;
+	public static int motorLow = 100;
+	public static int motorHigh = 200;
 	private static Navigator nav;
 	
 	public static void main(String[] args) throws InterruptedException
@@ -32,6 +34,9 @@ public class Main
 		final TextLCD t = LocalEV3.get().getTextLCD();
 		OdometryDisplay odometryDisplay = new OdometryDisplay(odometer,t);
 		nav = new Navigator(leftMotor, rightMotor, odometer);
+		BangBangController bangbang = new BangBangController(leftMotor, rightMotor, bandCenter, bandWidth, motorLow, motorHigh);
+		
+		
 		odometer.start(); 
 		odometryDisplay.start();
 		nav.start();
@@ -48,12 +53,5 @@ public class Main
 				Thread.sleep(500);
 			}
 		}
-
-		/*for(int i = 0; i < waypoints.length; i++)
-		{
-			int[] point = waypoints[i];
-			System.out.println(point[0]);
-			System.out.println(point[1]);*/
-		//arrived.
 	}
 }
