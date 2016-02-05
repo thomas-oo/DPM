@@ -1,14 +1,9 @@
 package Navigation;
 
-import Navigation.UltrasonicPoller;
 import Navigation.OdometryDisplay;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.lcd.TextLCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
-import lejos.hardware.port.Port;
-import lejos.hardware.sensor.EV3UltrasonicSensor;
-import lejos.hardware.sensor.SensorModes;
-import lejos.robotics.SampleProvider;
 
 public class Main 
 {
@@ -41,8 +36,6 @@ public class Main
 		odometryDisplay.start();
 		nav.start();
 		completeCourse();
-
-
 	}
 	private static void completeCourse() throws InterruptedException
 	{

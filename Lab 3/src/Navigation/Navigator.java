@@ -1,7 +1,5 @@
 package Navigation;
 
-import lejos.hardware.Button;
-import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
 //note: timerlistener (as mentioned in instructions is basically just a timer given to a thread to run a cycle. it the time is over, switch task
@@ -60,25 +58,26 @@ public class Navigator extends Thread
 					leftMotor.stop();
 					rightMotor.stop();
 					turnTo(destTheta);//turnTo turns until turns are fully complete.
+					System.out.println("Not facing destination.");
 				}
 				else if(facingDest(destTheta))
 				{
-					System.out.println("facing destination");
 					state = State.TRAVELLING;
 				}
 				break;
 			case TRAVELLING:
 				if(!checkIfDone(nowDistance)) //not there yet
 				{
-					System.out.println("Updating Travel");
-					updateTravel(); //recalc where to turn and move (please implement)
+					leftMotor.forward();
+					rightMotor.forward();
+					updateTravel();
 				}
 				if (checkIfDone(nowDistance))
 				{
 					leftMotor.stop();
 					rightMotor.stop();
-					setSpeeds(0,0); //stop
-					isNavigating = false; //no long navigating, will allow main method to fetch next waypoint
+					System.out.println("Arrived.");
+					isNavigating = false;//no long navigating, will allow main method to fetch next waypoint
 					state = State.INIT; //go back to init. (will not go to turning after as isNavigating is false)
 				}
 				break;
@@ -99,8 +98,6 @@ public class Navigator extends Thread
 	{
 		destTheta = getDestAngle();
 	}
-
-
 	private boolean facingDest(double destTheta) //CHECKS IF NOWTHETA IS FACING DESTTHETA WITHIN THETATHRESHOLD 
 	{
 		if(nowTheta > (destTheta - thetaThreshold) && nowTheta < (destTheta + thetaThreshold)) //2 degrees of leeway
@@ -130,10 +127,6 @@ public class Navigator extends Thread
 		rightMotor.setSpeed(rightSpeed);
 		isNavigating();
 	}
-/*	private void updateTravel() //PLEASE IMPLEMENT.
-	{
-		
-	}*/
 	public void travelTo(double destX, double destY) //CALLED FROM MAIN (NEVER CALLED INSIDE NAVIGATOR) (BASICALLY A SETTER)
 	{
 		destDistance[0] = destX;
@@ -150,26 +143,21 @@ public class Navigator extends Thread
 		{
 			if(errorY > 0)
 			{
-				System.out.println("a");
 				return 0.5 * Math.PI; //90
 			}
 			else
 			{
-				System.out.println("b");
 				return 1.5 * Math.PI; //270
 			}
 		}
 		else if(errorY == 0)
 		{
-			System.out.println("c");
 			if(errorX > 0)
 			{
-				System.out.println("d");
 				return 0.0; //0
 			}
 			else
 			{
-				System.out.println("e");
 				return Math.PI; //180
 			}
 		}
@@ -177,15 +165,12 @@ public class Navigator extends Thread
 		
 		else if(errorX > 0) 
 		{
-			System.out.println("f");
 			if(errorY > 0) //positive theta
 			{
-				System.out.println("g");
 				return Math.atan(errorY/errorX);
 			}
 			else //converts quadrant 4 into a positive theta
 			{
-				System.out.println("h");
 				return 2*Math.PI + Math.atan(errorY/errorX);
 			}
 		}
@@ -193,12 +178,10 @@ public class Navigator extends Thread
 		{
 			if(errorY > 0) //quad 2, positive theta
 			{
-				System.out.println("i");
 				return (Math.atan(errorY/errorX) + Math.PI);
 			}
 			else if(errorY < 0) //quad 3, positive theta
 			{
-				System.out.println("j");
 				return (Math.atan(errorY/errorX) + Math.PI);
 			}
 		}
@@ -209,7 +192,7 @@ public class Navigator extends Thread
 		setSpeeds(forwardSpeed, forwardSpeed); //set speeds as we will be moving.
 
 		double turnTheta = destTheta - nowTheta; //dest and nowTheta both are from [0,2pi]
-
+		System.out.println(turnTheta);
 		//CALCULATES MINIMAL TURN and EXECUTES
 		//ROTATES UNTIL TURN IS COMPLETE.
 		if(turnTheta >= -Math.PI && turnTheta <= Math.PI)
@@ -229,8 +212,6 @@ public class Navigator extends Thread
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 		}
-		leftMotor.forward();
-		rightMotor.forward();
 	}
 	public boolean isNavigating() 
 	//returns true if another thread has called travelTo or turnTo
