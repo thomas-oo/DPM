@@ -1,6 +1,11 @@
 package Navigation;
 
+import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
+import lejos.hardware.port.Port;
+import lejos.hardware.sensor.EV3UltrasonicSensor;
+import lejos.hardware.sensor.SensorModes;
+import lejos.robotics.SampleProvider;
 
 //note: timerlistener (as mentioned in instructions is basically just a timer given to a thread to run a cycle. it the time is over, switch task
 public class Navigator extends Thread
@@ -23,6 +28,14 @@ public class Navigator extends Thread
 
 	private Odometer odometer;
 	
+	private ObstacleAvoidance avoidance;
+	private float[] usData;
+	private double usDistance;
+	private SampleProvider usSampleProvider;
+	private SensorModes usSensor;
+	
+	private static final Port usPort = LocalEV3.get().getPort("S2");
+	
 
 	//Constructor
 	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, Odometer odometer) //not sure what to pass to constructor yet..
@@ -30,6 +43,11 @@ public class Navigator extends Thread
 		this.odometer = odometer;
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
+		
+		//constructors to get USsensor data
+		this.usSensor = new EV3UltrasonicSensor(usPort);
+		this.usSampleProvider = usSensor.getMode("Distance");
+		this.usData = new float[usSampleProvider.sampleSize()];
 	}
 
 	enum State {INIT,WALL,TURNING, TRAVELLING};
@@ -40,10 +58,16 @@ public class Navigator extends Thread
 		//isNavigating will be initialized from main
 		while (true) //forward and angular error calculator.
 		{
-			odometer.getPosition(nowDistance, new boolean[]{true, true, true});
+			odometer.getPosition(nowDistance, new boolean[]{true, true, true}); //get pos.
 			nowX = nowDistance[0];
 			nowY = nowDistance[1];
 			nowTheta = nowDistance[2];
+			
+			
+			usSampleProvider.fetchSample(usData, 0); //get latest reading from USsensor.
+			usDistance = (double) usData[0];
+			
+			
 			switch(state)
 			{
 			case INIT:
@@ -66,13 +90,19 @@ public class Navigator extends Thread
 				}
 				break;
 			case TRAVELLING:
-				if(!checkIfDone(nowDistance)) //not there yet
+				if(checkEmergency())
+				{
+					state = State.WALL;
+					avoidance = new ObstacleAvoidance(this);
+					avoidance.start();
+				}
+				else if(!checkIfDone(nowDistance)) //not there yet
 				{
 					leftMotor.forward();
 					rightMotor.forward();
 					updateTravel();
 				}
-				if (checkIfDone(nowDistance))
+			else (checkIfDone(nowDistance))
 				{
 					leftMotor.stop();
 					rightMotor.stop();
@@ -81,6 +111,7 @@ public class Navigator extends Thread
 					state = State.INIT; //go back to init. (will not go to turning after as isNavigating is false)
 				}
 				break;
+			case WALL:
 			}
 			try
 			{
