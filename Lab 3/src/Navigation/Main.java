@@ -44,7 +44,7 @@ public class Main
 	}
 	private static void completeCourse() throws InterruptedException
 	{
-		int [][] waypoints = {{0,60}, {60,0}};
+		int [][] waypoints = {{60,30}, {30,30}, {30,60}, {60,0}};
 		for (int[]point:waypoints)
 		{
 			nav.travelTo(point[0],point[1]); //sets destX and destY to destDistance[0],[1]. as well, sets isNavigating = true

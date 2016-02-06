@@ -20,8 +20,8 @@ public class Navigator extends Thread
 	private double nowY;
 	private double nowTheta; //max is 359, min is 0
 
-	private double thetaThreshold = 0.034906585;
-	private double destThreshold = 1;
+	private double thetaThreshold = 0.0349066;
+	private double destThreshold = 0.5;
 	
 	private boolean isNavigating; //used in state INIT, determines if we will switch state to TURNING //also if false, that means it has arrived.
 	private EV3LargeRegulatedMotor leftMotor, rightMotor, headMotor;
@@ -119,7 +119,6 @@ public class Navigator extends Thread
 				break;
 			case WALL:
 				
-				
 				setSpeeds(forwardSpeed, forwardSpeed);
 				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
 				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
@@ -137,6 +136,8 @@ public class Navigator extends Thread
 					e1.printStackTrace();
 				}//only after it gets out of the code, it will sleep for 30ms
 				
+				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
+				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
 				headMotor.rotate(45);
 				state = State.INIT;
 				break;

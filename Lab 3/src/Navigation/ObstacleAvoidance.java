@@ -21,7 +21,7 @@ public class ObstacleAvoidance extends Thread
 	private double[] avoidanceNowDistance = new double[3];
 	private double avoidanceNowX,avoidanceNowY,avoidanceNowTheta ;
 	private double distThreshold = 0.5;
-	private double thetaThreshold = 0.034906585;
+	private double thetaThreshold = 0.0078565804;
 	
 
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
