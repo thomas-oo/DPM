@@ -15,7 +15,7 @@ public class Main
 	public static double rWheel = 2.15; //measure
 	public static double dBase = 16.2;
 	public static int bandCenter = 20;
-	public static int bandWidth = 3;
+	public static int bandWidth = 2;
 	public static int motorLow = 100;
 	public static int motorHigh = 200;
 	private static Navigator nav;

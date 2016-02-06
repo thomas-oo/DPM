@@ -71,10 +71,8 @@ public class Navigator extends Thread
 			nowY = nowDistance[1];
 			nowTheta = nowDistance[2];
 			
-			
 			usSampleProvider.fetchSample(usData, 0); //get latest reading from USsensor.
 			usDistance = (double)(usData[0]*100.0); //in cm now?
-			
 			
 			switch(state)
 			{
@@ -104,9 +102,11 @@ public class Navigator extends Thread
 				}
 				else if(!checkIfDone(nowDistance)) //not there yet
 				{
+					setSpeeds(forwardSpeed, forwardSpeed); //changed
 					leftMotor.forward();
 					rightMotor.forward();
 					updateTravel();
+					state = State.INIT;
 				}
 			    else if(checkIfDone(nowDistance))
 				{
@@ -259,25 +259,27 @@ public class Navigator extends Thread
 		setSpeeds(forwardSpeed, forwardSpeed); //set speeds as we will be moving.
 
 		double turnTheta = destTheta - nowTheta; //dest and nowTheta both are from [0,2pi]
-		System.out.println(turnTheta);
 		//CALCULATES MINIMAL TURN and EXECUTES
 		//ROTATES UNTIL TURN IS COMPLETE.
 		if(turnTheta >= -Math.PI && turnTheta <= Math.PI)
 		{
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			System.out.println("a");
 		}
 		if(turnTheta < -Math.PI)
 		{
 			turnTheta = turnTheta + 2*Math.PI;
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			System.out.println("b");
 		}
 		if(turnTheta>Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			System.out.println("c");
 		}
 	}
 	public boolean isNavigating() 

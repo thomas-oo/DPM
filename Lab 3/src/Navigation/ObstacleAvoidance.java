@@ -12,15 +12,17 @@ public class ObstacleAvoidance extends Thread
 	Navigator nav;
 	boolean safe;
 	double pastX, pastY, idealTheta;
-
+	double calcX, calcY, calcTheta;
+	
 	private Odometer odometer;
 	private final int bandCenter, bandwidth;
 	private final int motorLow, motorHigh;
 
 	private double[] avoidanceNowDistance = new double[3];
 	private double avoidanceNowX,avoidanceNowY,avoidanceNowTheta ;
-	private double distThreshold = 2;
+	private double distThreshold = 0.5;
 	private double thetaThreshold = 0.034906585;
+	
 
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 
@@ -65,12 +67,19 @@ public class ObstacleAvoidance extends Thread
 			avoidanceNowY = avoidanceNowDistance[1];
 			avoidanceNowTheta = avoidanceNowDistance[2]; //cannot use this, won't calculate the same theta, this is practically useless
 
-			if (Math.abs(Math.atan(avoidanceNowY/avoidanceNowX)- idealTheta) <= thetaThreshold) //maybe change a bit? avoidY-pastY , etc?
+			calcX = avoidanceNowX - pastX;
+			calcY = avoidanceNowY - pastY;
+			
+			calcTheta = Math.atan(calcY/calcX);
+			
+			calcTheta = convertTheta(calcTheta);
+			
+			
+			if (Math.abs(calcTheta- idealTheta) <= thetaThreshold) //maybe change a bit? avoidY-pastY , etc?
 			{
 				if(Math.abs(avoidanceNowX - pastX) < distThreshold || Math.abs(avoidanceNowX - pastX) < distThreshold)
 				{
 					processUSData(distance);
-					System.out.println("bang-bang running, at start");
 				}
 				else
 				{
@@ -80,14 +89,62 @@ public class ObstacleAvoidance extends Thread
 			else
 			{
 				processUSData(distance);
-				System.out.println("bang-bang running");
 			}
-			System.out.println(safe);
 		}
 		//when the safe is true 	
 	}
 
 
+	private double convertTheta(double calcTheta2) 
+	{
+		if(calcX > 0) 
+		{
+			if(calcY > 0) //positive theta
+			{
+				return Math.atan(calcY/calcX);
+			}
+			else //converts quadrant 4 into a positive theta
+			{
+				return 2*Math.PI + Math.atan(calcY/calcX);
+			}
+		}
+		else if(calcX < 0)
+		{
+			if(calcY > 0) //quad 2, positive theta
+			{
+				return (Math.atan(calcY/calcX) + Math.PI);
+			}
+			else if(calcY < 0) //quad 3, positive theta
+			{
+				return (Math.atan(calcY/calcX) + Math.PI);
+			}
+		}
+		else if(Math.abs(calcX) < distThreshold)
+		{
+			if(calcY > 0)
+			{
+				return 0.5*Math.PI;
+			}
+			else
+			{
+				return 1.5*Math.PI;
+			}
+		}
+		else if(Math.abs(calcY) < distThreshold)
+		{
+			
+			if(calcX > 0)
+			{
+				return 0;
+			}
+			else
+			{
+				return Math.PI;
+			}
+			
+		}
+		return 0.0; //if all else goes wrong
+	}
 	public void processUSData(int distance) { //this is bang bang
 		/*		if (distance >= 255 && filterControl < FILTER_OUT) {
 			// bad value, do not set the distance var, however do increment the filter value
