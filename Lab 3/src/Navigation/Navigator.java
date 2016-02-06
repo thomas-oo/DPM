@@ -90,7 +90,6 @@ public class Navigator extends Thread
 					leftMotor.stop();
 					rightMotor.stop();
 					turnTo(destTheta);//turnTo turns until turns are fully complete.
-					System.out.println("Not facing destination.");
 				}
 				else if(facingDest(destTheta))
 				{
@@ -120,13 +119,13 @@ public class Navigator extends Thread
 				break;
 			case WALL:
 				
+				
+				setSpeeds(forwardSpeed, forwardSpeed);
 				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
-				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
+				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
 				
 				headMotor.rotate(-45);
 				
-				leftMotor.rotate(45);
-				rightMotor.rotate(45);
 				avoidance = new ObstacleAvoidance(this, nowX, nowY, nowTheta, odometer,leftMotor, rightMotor,bandCenter, bandwidth,
 						motorLow, motorHigh, usSampleProvider); //start avoiding obstacle, theoretically supposed to run until checkEmergency is false
 				avoidance.start(); 
@@ -137,6 +136,10 @@ public class Navigator extends Thread
 				{
 					e1.printStackTrace();
 				}//only after it gets out of the code, it will sleep for 30ms
+				
+				headMotor.rotate(45);
+				state = State.INIT;
+				break;
 			}
 			try
 			{

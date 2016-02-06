@@ -19,6 +19,7 @@ public class ObstacleAvoidance extends Thread
 
 	private double[] avoidanceNowDistance = new double[3];
 	private double avoidanceNowX,avoidanceNowY,avoidanceNowTheta ;
+	private double distThreshold = 2;
 	private double thetaThreshold = 0.034906585;
 
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
@@ -63,22 +64,25 @@ public class ObstacleAvoidance extends Thread
 			avoidanceNowX = avoidanceNowDistance[0];
 			avoidanceNowY = avoidanceNowDistance[1];
 			avoidanceNowTheta = avoidanceNowDistance[2]; //cannot use this, won't calculate the same theta, this is practically useless
-			System.out.println();
-			System.out.println();
-			System.out.println();
-			System.out.println(pastX);
-			System.out.println(pastY);
-			
-			
-			if (Math.atan(avoidanceNowY/avoidanceNowX) <= (idealTheta + thetaThreshold)) //maybe change a bit? avoidY-pastY , etc?
+
+			if (Math.abs(Math.atan(avoidanceNowY/avoidanceNowX)- idealTheta) <= thetaThreshold) //maybe change a bit? avoidY-pastY , etc?
 			{
-				safe = true; //once this is set to true, this class is going to stop running
-				System.out.println(safe);
+				if(Math.abs(avoidanceNowX - pastX) < distThreshold || Math.abs(avoidanceNowX - pastX) < distThreshold)
+				{
+					processUSData(distance);
+					System.out.println("bang-bang running, at start");
+				}
+				else
+				{
+					safe = true;
+				}
 			}
 			else
 			{
-				processUSData(distance); //start running bang bang, this will continue to loop until the robot is at its right position
+				processUSData(distance);
+				System.out.println("bang-bang running");
 			}
+			System.out.println(safe);
 		}
 		//when the safe is true 	
 	}
