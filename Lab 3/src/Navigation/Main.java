@@ -10,6 +10,7 @@ public class Main
 	//Declare variables
 	public static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
 	public static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
+	public static final EV3LargeRegulatedMotor headMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("C"));
 	//private static final Port usPort = LocalEV3.get().getPort("S2");
 	public static double rWheel = 2.15; //measure
 	public static double dBase = 16.2;
@@ -33,8 +34,7 @@ public class Main
 		Odometer odometer = new Odometer(rWheel, dBase);
 		final TextLCD t = LocalEV3.get().getTextLCD();
 		OdometryDisplay odometryDisplay = new OdometryDisplay(odometer,t);
-		nav = new Navigator(leftMotor, rightMotor, odometer);
-		BangBangController bangbang = new BangBangController(leftMotor, rightMotor, bandCenter, bandWidth, motorLow, motorHigh);
+		nav = new Navigator(leftMotor, rightMotor, headMotor, odometer,bandCenter,bandWidth,motorLow,motorHigh);
 		
 		
 		odometer.start(); 

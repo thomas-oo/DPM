@@ -24,25 +24,33 @@ public class Navigator extends Thread
 	private double destThreshold = 1;
 	
 	private boolean isNavigating; //used in state INIT, determines if we will switch state to TURNING //also if false, that means it has arrived.
-	private EV3LargeRegulatedMotor leftMotor, rightMotor;
+	private EV3LargeRegulatedMotor leftMotor, rightMotor, headMotor;
 
 	private Odometer odometer;
 	
 	private ObstacleAvoidance avoidance;
-	private float[] usData;
-	private double usDistance;
-	private SampleProvider usSampleProvider;
-	private SensorModes usSensor;
+	public float[] usData;
+	public double usDistance;
+	public SampleProvider usSampleProvider;
+	public SensorModes usSensor;
+	
+	private final int bandCenter, bandwidth;
+	private final int motorLow, motorHigh;
 	
 	private static final Port usPort = LocalEV3.get().getPort("S2");
-	
 
 	//Constructor
-	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, Odometer odometer) //not sure what to pass to constructor yet..
+	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, EV3LargeRegulatedMotor headMotor, Odometer odometer, int bandCenter,
+			int bandwidth, int motorLow, int motorHigh) //not sure what to pass to constructor yet..
 	{
 		this.odometer = odometer;
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
+		this.headMotor = headMotor;
+		this.bandCenter = bandCenter;
+		this.bandwidth = bandwidth;
+		this.motorLow = motorLow; 
+		this.motorHigh = motorHigh;
 		
 		//constructors to get USsensor data
 		this.usSensor = new EV3UltrasonicSensor(usPort);
@@ -65,7 +73,7 @@ public class Navigator extends Thread
 			
 			
 			usSampleProvider.fetchSample(usData, 0); //get latest reading from USsensor.
-			usDistance = (double) usData[0];
+			usDistance = (double)(usData[0]*100.0); //in cm now?
 			
 			
 			switch(state)
@@ -90,11 +98,10 @@ public class Navigator extends Thread
 				}
 				break;
 			case TRAVELLING:
-				if(checkEmergency())
+				if(checkEmergency())// if this is true, go into state where there's a wall encounter
 				{
-					state = State.WALL;
-					avoidance = new ObstacleAvoidance(this);
-					avoidance.start();
+					state = State.WALL; // is this even useful? ObstacleAvoidance will start until there's no wall anymore
+					break; //don't check if it's done or not, avoid avoid the obstacle
 				}
 				else if(!checkIfDone(nowDistance)) //not there yet
 				{
@@ -102,7 +109,7 @@ public class Navigator extends Thread
 					rightMotor.forward();
 					updateTravel();
 				}
-			else (checkIfDone(nowDistance))
+			    else if(checkIfDone(nowDistance))
 				{
 					leftMotor.stop();
 					rightMotor.stop();
@@ -112,6 +119,24 @@ public class Navigator extends Thread
 				}
 				break;
 			case WALL:
+				
+				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
+				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
+				
+				headMotor.rotate(-45);
+				
+				leftMotor.rotate(45);
+				rightMotor.rotate(45);
+				avoidance = new ObstacleAvoidance(this, nowX, nowY, nowTheta, odometer,leftMotor, rightMotor,bandCenter, bandwidth,
+						motorLow, motorHigh, usSampleProvider); //start avoiding obstacle, theoretically supposed to run until checkEmergency is false
+				avoidance.start(); 
+				try 
+				{
+					avoidance.join();
+				} catch (InterruptedException e1) 
+				{
+					e1.printStackTrace();
+				}//only after it gets out of the code, it will sleep for 30ms
 			}
 			try
 			{
@@ -122,6 +147,14 @@ public class Navigator extends Thread
 				e.printStackTrace();
 			} 	
 		}
+	}
+
+
+	private boolean checkEmergency() { //checking if it's too close to the wall
+		if(usDistance <= 20)
+			return true;
+		else 
+			return false;
 	}
 
 
@@ -262,4 +295,3 @@ public class Navigator extends Thread
 		this.isNavigating = isNavigating;
 	}
 }
-
