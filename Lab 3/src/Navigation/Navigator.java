@@ -7,72 +7,98 @@ import lejos.hardware.sensor.EV3UltrasonicSensor;
 import lejos.hardware.sensor.SensorModes;
 import lejos.robotics.SampleProvider;
 
-//note: timerlistener (as mentioned in instructions is basically just a timer given to a thread to run a cycle. it the time is over, switch task
 public class Navigator extends Thread
 {
 	private int forwardSpeed = 150;
-
+	
+	//destination variables
 	private double[] destDistance = new double[2];
-	private double destTheta; //max is 359, min is 0
-
+	private double destTheta;
+	
+	//current coordinates
 	private double[] nowDistance = new double[3];
 	private double nowX;
 	private double nowY;
-	private double nowTheta; //max is 359, min is 0
-
-	private double thetaThreshold = 0.0349066;
-	private double destThreshold = 0.5;
+	private double nowTheta;
 	
-	private boolean isNavigating; //used in state INIT, determines if we will switch state to TURNING //also if false, that means it has arrived.
+	//thresholds to allow control to within this window.
+	private double thetaThreshold = 0.0349066; //2 degrees in rads
+	private double destThreshold = 0.25; //0.5 cm of deviation allowed in navigating to waypoint
+	
+	//state variables
+	private boolean isNavigating;
+	private boolean isCorrecting;
+	
+	//motors that need to be used
 	private EV3LargeRegulatedMotor leftMotor, rightMotor, headMotor;
 
+	//classes that navigator depends on
 	private Odometer odometer;
-	
 	private ObstacleAvoidance avoidance;
+	
+	//buffers for accessing ultrasonic data
 	public float[] usData;
 	public double usDistance;
 	public SampleProvider usSampleProvider;
 	public SensorModes usSensor;
 	
-	private final int bandCenter, bandwidth;
+	//variables that are set in main, passed here
+	private final int bandCenter, bandWidth;
 	private final int motorLow, motorHigh;
 	
 	private static final Port usPort = LocalEV3.get().getPort("S2");
 
-	//Constructor
-	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, EV3LargeRegulatedMotor headMotor, Odometer odometer, int bandCenter,
-			int bandwidth, int motorLow, int motorHigh) //not sure what to pass to constructor yet..
+	public Navigator(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, EV3LargeRegulatedMotor headMotor, Odometer odometer)
 	{
 		this.odometer = odometer;
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
 		this.headMotor = headMotor;
-		this.bandCenter = bandCenter;
-		this.bandwidth = bandwidth;
-		this.motorLow = motorLow; 
-		this.motorHigh = motorHigh;
 		
-		//constructors to get USsensor data
+		this.bandCenter = Main.bandCenter;
+		this.bandWidth = Main.bandWidth;
+		this.motorLow = Main.motorLow; 
+		this.motorHigh = Main.motorHigh;
+		
 		this.usSensor = new EV3UltrasonicSensor(usPort);
 		this.usSampleProvider = usSensor.getMode("Distance");
 		this.usData = new float[usSampleProvider.sampleSize()];
 	}
 
-	enum State {INIT,WALL,TURNING, TRAVELLING};
+	enum State {INIT,WALL,TURNING, TRAVELING};
 
 	public void run()
 	{
+		//4 states
+			//state for initializing
+				//if navigator has a destination, go to state turning
+			//state for turning
+				//turn to the destination theta if it isn't already facing that direction
+					//go to state traveling
+			//state for traveling
+				//before moving forward, check if there is an emergency (wall), if so, go to state wall
+				//if no emergency, check if you are already at the waypoint, 
+					//if not, move with forward speed
+						//for the next cycle, recalc a the latest destination theta with latest coordinates from odometer
+						//on next cycle, go to state init to make sure that you are heading in the new theta direction
+					//if so, stop, and set the flag isNavigating to false, lets the main method know that the waypoint is reached.
+			//state for wall
+				//if a wall is detected, turn 90 deg clockwise and position the camera at a 45 degree angle towards the wall.
+					//start avoidance (navigator thread is blocked UNTIL avoidance is done.
+						//avoidance continues until your coordinate is within the vector connecting where you first detected the wall, to the waypoint
+							//once that is done, you should be safe so turn back 90 deg and go to state init to continue with your path.
 		State state = State.INIT;
-		//isNavigating will be initialized from main
-		while (true) //forward and angular error calculator.
+		while (true)
 		{
-			odometer.getPosition(nowDistance, new boolean[]{true, true, true}); //get pos.
+			odometer.getPosition(nowDistance, new boolean[]{true, true, true});
 			nowX = nowDistance[0];
 			nowY = nowDistance[1];
 			nowTheta = nowDistance[2];
 			
-			usSampleProvider.fetchSample(usData, 0); //get latest reading from USsensor.
-			usDistance = (double)(usData[0]*100.0); //in cm now?
+			usSampleProvider.fetchSample(usData, 0);
+			usDistance = (double)(usData[0]*100.0);
+			
+			isCorrecting = false;
 			
 			switch(state)
 			{
@@ -83,26 +109,28 @@ public class Navigator extends Thread
 				}
 				break;
 			case TURNING:
+				isCorrecting = false;
 				if (!facingDest(destTheta))
 				{
 					leftMotor.stop();
 					rightMotor.stop();
-					turnTo(destTheta);//turnTo turns until turns are fully complete.
+					turnTo(destTheta);
 				}
 				else if(facingDest(destTheta))
 				{
-					state = State.TRAVELLING;
+					state = State.TRAVELING;
 				}
 				break;
-			case TRAVELLING:
-				if(checkEmergency())// if this is true, go into state where there's a wall encounter
+			case TRAVELING:
+				isCorrecting = true;
+				if(checkEmergency())
 				{
-					state = State.WALL; // is this even useful? ObstacleAvoidance will start until there's no wall anymore
-					break; //don't check if it's done or not, avoid avoid the obstacle
+					state = State.WALL;
+					break;
 				}
-				else if(!checkIfDone(nowDistance)) //not there yet
+				else if(!checkIfDone(nowDistance))
 				{
-					setSpeeds(forwardSpeed, forwardSpeed); //changed
+					setSpeeds(forwardSpeed, forwardSpeed);
 					leftMotor.forward();
 					rightMotor.forward();
 					updateTravel();
@@ -113,20 +141,20 @@ public class Navigator extends Thread
 					leftMotor.stop();
 					rightMotor.stop();
 					System.out.println("Arrived.");
-					isNavigating = false;//no long navigating, will allow main method to fetch next waypoint
-					state = State.INIT; //go back to init. (will not go to turning after as isNavigating is false)
+					isNavigating = false;
+					state = State.INIT;
 				}
 				break;
 			case WALL:
-				
+				isCorrecting = false;
 				setSpeeds(forwardSpeed, forwardSpeed);
 				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
 				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
 				
 				headMotor.rotate(-45);
 				
-				avoidance = new ObstacleAvoidance(this, nowX, nowY, nowTheta, odometer,leftMotor, rightMotor,bandCenter, bandwidth,
-						motorLow, motorHigh, usSampleProvider); //start avoiding obstacle, theoretically supposed to run until checkEmergency is false
+				avoidance = new ObstacleAvoidance(this, nowX, nowY, nowTheta, odometer,leftMotor, rightMotor,bandCenter, bandWidth,
+						motorLow, motorHigh, usSampleProvider);
 				avoidance.start(); 
 				try 
 				{
@@ -134,7 +162,7 @@ public class Navigator extends Thread
 				} catch (InterruptedException e1) 
 				{
 					e1.printStackTrace();
-				}//only after it gets out of the code, it will sleep for 30ms
+				}
 				
 				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
 				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
@@ -160,15 +188,13 @@ public class Navigator extends Thread
 		else 
 			return false;
 	}
-
-
-	private void updateTravel() 
+	private void updateTravel() //update the destination angle of the next "cycle" of travel
 	{
 		destTheta = getDestAngle();
 	}
-	private boolean facingDest(double destTheta) //CHECKS IF NOWTHETA IS FACING DESTTHETA WITHIN THETATHRESHOLD 
+	private boolean facingDest(double destTheta) //checks if nowTheta is facing destTheta within a leeway of thetaThreshold 
 	{
-		if(nowTheta > (destTheta - thetaThreshold) && nowTheta < (destTheta + thetaThreshold)) //2 degrees of leeway
+		if(nowTheta > (destTheta - thetaThreshold) && nowTheta < (destTheta + thetaThreshold))
 		{
 			return true;
 		}
@@ -177,11 +203,11 @@ public class Navigator extends Thread
 			return false;
 		}
 	}
-	private boolean checkIfDone(double[] nowDistance) //SETS NOWX TO BE NOWDISTANCE0, ETC, CHECKS IF NOWX AND Y ARE WITHIN DESTTHRESHOLD OF DESTDISTANCE[0],[1]
+	private boolean checkIfDone(double[] nowDistance) //checks if nowX, Y are within destThreshold of destDistnace[0], [1]
 	{
-		if((nowX > (destDistance[0] - destThreshold)) && (nowX < (destDistance[0] + destThreshold)))
+		if(nowX > (destDistance[0]-destThreshold) && (nowX < (destDistance[0] + destThreshold)))
 		{
-			if((nowY > (destDistance[1] - destThreshold)) && (nowY < (destDistance[1]+ destThreshold)))
+			if(nowY > (destDistance[1]-destThreshold) && (nowY < (destDistance[1]+ destThreshold)))
 			{
 				return true;
 			}
@@ -189,25 +215,26 @@ public class Navigator extends Thread
 		}
 		return false;
 	}
-	private void setSpeeds(int leftSpeed, int rightSpeed) //SETS MOTORSPEEDS
+	private void setSpeeds(int leftSpeed, int rightSpeed) //sets motor speeds
 	{
 		leftMotor.setSpeed(leftSpeed);
 		rightMotor.setSpeed(rightSpeed);
 		isNavigating();
 	}
-	public void travelTo(double destX, double destY) //CALLED FROM MAIN (NEVER CALLED INSIDE NAVIGATOR) (BASICALLY A SETTER)
+	public void travelTo(double destX, double destY) //called from main, (never called inside navigator). Is basically a setter for destination and flags isNavigating to true
 	{
 		destDistance[0] = destX;
 		destDistance[1] = destY;
 		destTheta = getDestAngle();
 		isNavigating = true;
 	}
-	private double getDestAngle() //USES destDistance[0],[1] TO CALCULATE destTheta. destTheta IS THE HEADING WITH RESPECT TO COORDINATE SYSTEM. (max is 2pi, min is 0)
+	private double getDestAngle() //uses destDistance[0],[1] to calculate destTheta. destTheta is the heading with respect to coordinate system. 
+								  //(where the min is 0 (on positive x-axis), and max is 2pi. positive theta is counterclockwise angle from the positive x-axis.
 	{
 		double errorX = destDistance[0] - nowX;
 		double errorY = destDistance[1] - nowY;
 
-		if(Math.abs(errorX) < destThreshold) //changed 
+		if(Math.abs(errorX) < destThreshold)
 		{
 			if(errorY > 0)
 			{
@@ -218,7 +245,7 @@ public class Navigator extends Thread
 				return 1.5 * Math.PI; //270
 			}
 		}
-		else if(Math.abs(errorY) < destThreshold) //changed
+		else if(Math.abs(errorY) < destThreshold)
 		{
 			if(errorX > 0)
 			{
@@ -268,25 +295,30 @@ public class Navigator extends Thread
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 			System.out.println("a");
 		}
-		if(turnTheta < -Math.PI)
+		if(turnTheta < -Math.PI && turnTheta > -2*Math.PI)
 		{
 			turnTheta = turnTheta + 2*Math.PI;
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
-			System.out.println("b");
 		}
-		if(turnTheta>Math.PI)
+		if(turnTheta>Math.PI && turnTheta < 2*Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
 			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
 			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
-			System.out.println("c");
+		}
+		else
+		{
+			System.out.println("turnTheta error: " + turnTheta);
 		}
 	}
-	public boolean isNavigating() 
-	//returns true if another thread has called travelTo or turnTo
+	public boolean isNavigating() //returns true if another thread has called travelTo or turnTo
 	{
 		return isNavigating;
+	}
+	public boolean isCorrecting() //returns true if navigator is currently turning
+	{
+		return isCorrecting;
 	}
 	private static int convertDistance(double radius, double distance)  //converts linear distance that wheels need to travel into rotations (deg) that the wheels need to perform
 	{
@@ -296,7 +328,7 @@ public class Navigator extends Thread
 	{ //hopefully works
 		return convertDistance(radius, angle*width/2);
 	}
-	public void setNavigating(boolean isNavigating) //sets isNavigating (unused right now)
+	public void setNavigating(boolean isNavigating) //sets isNavigating if ever needed (unused here)
 	{
 		this.isNavigating = isNavigating;
 	}

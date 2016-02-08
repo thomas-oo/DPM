@@ -3,24 +3,20 @@ package Navigation;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
 public class Odometer extends Thread {
-	// robot position
 	private double x, y, theta;
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 	private int oldTachoLeft, oldTachoRight, nowTachoLeft, nowTachoRight;
 	private double d1, d2, dh, d;
 	private double rWheel, dBase;
 
-	// odometer update period, in ms
 	private static final long ODOMETER_PERIOD = 25;
 
-	// lock object for mutual exclusion
 	private Object lock;
 
-	// default constructor
 	public Odometer(double rWheel, double dBase) {
 		x = 0.0;
 		y = 0.0;
-		theta = 0.0; //start robot in positive x axis (min is 0, max is 2Pi)
+		theta = 0.0;
 		this.leftMotor = Main.leftMotor;
 		this.rightMotor = Main.rightMotor;
 		this.rWheel = rWheel;
@@ -32,25 +28,22 @@ public class Odometer extends Thread {
 		lock = new Object();
 	}
 
-	// run method (required for Thread)
 	public void run() {
 		long updateStart, updateEnd;
 
 		while (true) {
 			updateStart = System.currentTimeMillis();
-			// put (some of) your odometer code here (step 1)
-			//read tachometers from both motors
 			nowTachoLeft = leftMotor.getTachoCount();
 			nowTachoRight = rightMotor.getTachoCount();
-			synchronized (lock) //wait for code
+			synchronized (lock)
 			{
-				// don't use the variables x, y, or theta anywhere but here!
-				d1 = Math.PI*rWheel*(nowTachoLeft - oldTachoLeft)/180; //left wheel distance
-				d2 = Math.PI*rWheel*(nowTachoRight - oldTachoRight)/180; //right wheel distance
+				d1 = Math.PI*rWheel*(nowTachoLeft - oldTachoLeft)/180;
+				d2 = Math.PI*rWheel*(nowTachoRight - oldTachoRight)/180;
 				oldTachoLeft = nowTachoLeft;
 				oldTachoRight = nowTachoRight;
-				dh = 0.5*(d1 + d2); //distance of base
-				d = d2 - d1; //arclength
+				dh = 0.5*(d1 + d2);
+				d = d2 - d1;
+				theta += d/dBase;
 				if(theta < 0)
 				{
 					theta += 2 * Math.PI;
@@ -60,12 +53,9 @@ public class Odometer extends Thread {
 					theta -= 2 * Math.PI;
 
 				}
-				theta += d/dBase; //d/rBase is the delta theta
 				x += dh * Math.cos(theta);
 				y += dh * Math.sin(theta);
 			}
-
-			// this ensures that the odometer only runs once every period
 			updateEnd = System.currentTimeMillis();
 			if (updateEnd - updateStart < ODOMETER_PERIOD) {
 				try 
@@ -73,16 +63,10 @@ public class Odometer extends Thread {
 					Thread.sleep(ODOMETER_PERIOD - (updateEnd - updateStart));
 				} 
 				catch (InterruptedException e) {
-					// there is nothing to be done here because it is not
-					// expected that the odometer will be interrupted by
-					// another thread
 				}
 			}
 		}
 	}
-
-	// accessors
-	// thus getters have synchronized statements to avoid data from changing while method runs
 	public void getPosition(double[] position, boolean[] update) {
 		// ensure that the values don't change while the odometer is running
 		synchronized (lock) 
@@ -127,7 +111,6 @@ public class Odometer extends Thread {
 		return result;
 	}
 
-	// mutators (setters)
 	public void setPosition(double[] position, boolean[] update) {
 		// ensure that the values don't change while the odometer is running
 		synchronized (lock) {

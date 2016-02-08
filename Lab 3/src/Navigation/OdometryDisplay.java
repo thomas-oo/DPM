@@ -12,32 +12,26 @@ public class OdometryDisplay extends Thread {
 	private TextLCD t;
 	private double thetaDisplay;
 
-	// constructor
 	public OdometryDisplay(Odometer odometer, TextLCD t) {
 		this.odometer = odometer;
 		this.t = t;
 	}
 
-	// run method (required for Thread)
 	public void run() {
-		long displayStart, displayEnd; //start and end times for display
-		double[] position = new double[3]; // x,y,theta
+		long displayStart, displayEnd;
+		double[] position = new double[3];
 
-		// clear the display once
 		t.clear();
 
 		while (true) {
 			displayStart = System.currentTimeMillis();
 
-			// clear the lines for displaying odometry information
 			t.drawString("X:              ", 0, 0);
 			t.drawString("Y:              ", 0, 1);
 			t.drawString("T:              ", 0, 2);
 
-			// get the odometry information
-			odometer.getPosition(position, new boolean[] { true, true, true }); //passes ARRAYS and data is "got" from odometer while locked
+			odometer.getPosition(position, new boolean[] { true, true, true });
 
-			// display odometry information
 			for (int i = 0; i < 3; i++) {
 				if (i == 2)
 				{
@@ -64,9 +58,11 @@ public class OdometryDisplay extends Thread {
 			// throttle the OdometryDisplay
 			displayEnd = System.currentTimeMillis();
 			if (displayEnd - displayStart < DISPLAY_PERIOD) { //if run takes > display_period to complete, do another cycle, if not (perferred), try..
-				try {
+				try 
+				{
 					Thread.sleep(DISPLAY_PERIOD - (displayEnd - displayStart)); //..to sleep till the next cycle (display_period from display end)
-				} catch (InterruptedException e) {
+				} catch (InterruptedException e) 
+				{
 					// there is nothing to be done here because it is not
 					// expected that OdometryDisplay will be interrupted
 					// by another thread

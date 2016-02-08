@@ -1,14 +1,10 @@
 package Navigation;
 
-import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
-import lejos.hardware.port.Port;
-import lejos.hardware.sensor.EV3UltrasonicSensor;
-import lejos.hardware.sensor.SensorModes;
 import lejos.robotics.SampleProvider;
 
 public class ObstacleAvoidance extends Thread
-{ //this class will run until the robot reaches where it's supposed to be to continue trajectory
+{
 	Navigator nav;
 	boolean safe;
 	double pastX, pastY, idealTheta;
@@ -19,7 +15,7 @@ public class ObstacleAvoidance extends Thread
 	private final int motorLow, motorHigh;
 
 	private double[] avoidanceNowDistance = new double[3];
-	private double avoidanceNowX,avoidanceNowY,avoidanceNowTheta ;
+	private double avoidanceNowX,avoidanceNowY;
 	private double distThreshold = 0.5;
 	private double thetaThreshold = 0.0078565804;
 	
@@ -28,8 +24,6 @@ public class ObstacleAvoidance extends Thread
 
 	private SampleProvider sampleProvider;
 	private float[] usData;
-	private double usDistance;
-	private SensorModes usSensor;
 
 	public ObstacleAvoidance(Navigator nav,double pastX, double pastY, double idealTheta, Odometer odometer,EV3LargeRegulatedMotor leftMotor,
 			EV3LargeRegulatedMotor rightMotor, int bandCenter, int bandWidth, int motorLow, int motorHigh, SampleProvider sampleProvider)
@@ -49,23 +43,18 @@ public class ObstacleAvoidance extends Thread
 		
 		this.sampleProvider = sampleProvider;
 		this.usData = new float[sampleProvider.sampleSize()];
-
 	}
 	public void run()
 	{
-		while(!safe)// run this loop until it becomes safe AKA, at the position it's supposed to be at
+		while(!safe)
 		{
 			int distance;
-			sampleProvider.fetchSample(usData,0);							// acquire data
-			distance=(int)(usData[0]*100.0); //distance in cm?	
-
-			//BangBangController bangbang = new BangBangController(leftMotor, rightMotor,
-			//bandCenter, bandwidth, motorLow, motorHigh);
-
-			odometer.getPosition(avoidanceNowDistance, new boolean[]{true, true, true}); //get pos.
+			sampleProvider.fetchSample(usData,0);
+			distance=(int)(usData[0]*100.0);
+			
+			odometer.getPosition(avoidanceNowDistance, new boolean[]{true, true, true});
 			avoidanceNowX = avoidanceNowDistance[0];
 			avoidanceNowY = avoidanceNowDistance[1];
-			avoidanceNowTheta = avoidanceNowDistance[2]; //cannot use this, won't calculate the same theta, this is practically useless
 
 			calcX = avoidanceNowX - pastX;
 			calcY = avoidanceNowY - pastY;
@@ -75,9 +64,9 @@ public class ObstacleAvoidance extends Thread
 			calcTheta = convertTheta(calcTheta);
 			
 			
-			if (Math.abs(calcTheta- idealTheta) <= thetaThreshold) //maybe change a bit? avoidY-pastY , etc?
+			if (Math.abs(calcTheta- idealTheta) <= thetaThreshold)
 			{
-				if(Math.abs(avoidanceNowX - pastX) < distThreshold || Math.abs(avoidanceNowX - pastX) < distThreshold)
+				if(Math.abs(avoidanceNowX - pastX) < distThreshold && Math.abs(avoidanceNowY - pastY) < distThreshold) //
 				{
 					processUSData(distance);
 				}
@@ -90,11 +79,8 @@ public class ObstacleAvoidance extends Thread
 			{
 				processUSData(distance);
 			}
-		}
-		//when the safe is true 	
+		}	
 	}
-
-
 	private double convertTheta(double calcTheta2) 
 	{
 		if(calcX > 0) 
@@ -146,23 +132,7 @@ public class ObstacleAvoidance extends Thread
 		return 0.0; //if all else goes wrong
 	}
 	public void processUSData(int distance) { //this is bang bang
-		/*		if (distance >= 255 && filterControl < FILTER_OUT) {
-			// bad value, do not set the distance var, however do increment the filter value
-			// gives robot time to make a sharper turn
-			filterControl ++;
-		} 
-		else if (distance >= 255){
-			// true 255, therefore set distance to 255
-			//also move closer slowly so you can detect a wall
-			this.distance = 255;
-			leftMotor.setSpeed(motorHigh - motorLow); //left motor moves slower
-			rightMotor.setSpeed(motorHigh + motorLow); //right motor moves faster
-			leftMotor.forward();
-			rightMotor.forward();
 
-		} 
-		else if (distance < 255)
-		{*/
 		int difference = distance - bandCenter;
 		if (Math.abs(difference)<=(bandwidth)){
 			leftMotor.setSpeed(motorHigh);
@@ -188,13 +158,9 @@ public class ObstacleAvoidance extends Thread
 			rightMotor.forward();
 		}
 	}
-
-
-	//go straight if less than bandwidth 
 	public int readUSDistance() {
 		return this.readUSDistance();
 	}
-	
 	public boolean getSafe()
 	{
 		return this.safe;
