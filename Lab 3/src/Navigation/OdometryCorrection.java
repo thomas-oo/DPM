@@ -24,7 +24,7 @@ public class OdometryCorrection extends Thread {
 	private double nowX;
 	private double nowY;
 	private double nowTheta;
-	private double thetaThreshold;
+	private double thetaThreshold = 0.034906585;
 
 	private Odometer odometer;
 	private Navigator nav;
@@ -35,6 +35,7 @@ public class OdometryCorrection extends Thread {
 	}
 	enum State {INIT,ACROSS,ALONG,INTERSECTION};
 	public void run(){ 
+		State state = State.INIT;
 		while(true)
 		{
 			correctionStart = System.currentTimeMillis();
@@ -47,7 +48,7 @@ public class OdometryCorrection extends Thread {
 
 			else if (lightValue<0.3 && nav.isCorrecting()) //passed buffer, black line detected
 			{
-				Sound.beep();
+
 				odometer.getPosition(nowPosition, new boolean[] { true, true, true });
 				nowX = nowPosition[0];
 				nowY = nowPosition[1];
@@ -60,15 +61,14 @@ public class OdometryCorrection extends Thread {
 				//do not correct under these situations
 				//when crossing an intersection
 				//when not facing in the destination (avoids the case where correction is wrong when correcting DURING an oscillilation/turning)
-				State state = State.INIT;
 				switch(state)
 				{
 				case INIT:
-					if(checkIfIntersection() == true) //implemented.
+					if(checkIfIntersection()) //implemented.
 					{
 						state = state.INTERSECTION;
 					}
-					else if(checkIfAlong() == true)
+					else if(checkIfAlong())
 					{
 						state = state.ALONG;
 					}
@@ -76,18 +76,44 @@ public class OdometryCorrection extends Thread {
 					{
 						state = state.ACROSS;
 					}
+					System.out.println("Intersection: " + checkIfIntersection());
+					System.out.println("Along: " + checkIfAlong());
+					break;
 				case ACROSS:
 					if(nowX < 30 || nowY < 30) //will not correct for first square due to complications
 					{
+						if(Math.abs(30-nowX) < 1)
+						{
+							odometer.setX(30);
+							System.out.println("Across: corrected X to 30");
+						}
+						else if(Math.abs(30-nowY) < 1)
+						{
+							odometer.setY(30);
+							System.out.println("Across: corrected Y to 30");
+						}
+						else if(Math.abs(nowX) < 1)
+						{
+							odometer.setX(0);
+							System.out.println("Across: corrected X to 0");
+						}
+						else if(Math.abs(nowY) < 1)
+						{
+							odometer.setY(0);
+							System.out.println("Across: corrected Y to 0");
+						}
 					}
 					else if(Math.abs(nowX)%30< 1) //if nowX is close to a multiple of 30, it is a vertical line, correct to the nearest multiple of 30
 					{
 						odometer.setX(30*Math.floor(nowX/30));
+						System.out.println("Across: corrected X");
 					}
 					else if(Math.abs(nowY)%30 < 1) //if nowY is close to a multiple of 30, it is a horizontal line, correct to the nearest multiple of 30
 					{
 						odometer.setY(30*Math.floor(nowY/30));
+						System.out.println("Across: corrected Y");
 					}
+					state = state.INIT;
 					break;
 				case ALONG:
 					if(nowX < 30 || nowY < 30) //will not correct for first square due to complications
@@ -96,13 +122,17 @@ public class OdometryCorrection extends Thread {
 					else if(Math.abs(nowX)%30< 1) //if nowX is close to a multiple of 30, it is a vertical line, correct to the nearest multiple of 30
 					{
 						odometer.setX(30*Math.floor(nowX/30));
+						System.out.println("Along: corrected X");
 					}
 					else if(Math.abs(nowY)%30 < 1) //if nowY is close to a multiple of 30, it is a horizontal line, correct to the nearest multiple of 30
 					{
 						odometer.setY(30*Math.floor(nowY/30));
+						System.out.println("Along: corrected Y");
 					}
+					state = state.INIT;
 					break;
 				case INTERSECTION:
+					state = state.INIT;
 					break;
 				}
 
@@ -123,7 +153,6 @@ public class OdometryCorrection extends Thread {
 				}
 			}
 		}
-
 	}
 	private boolean checkIfIntersection() 
 	{
@@ -140,7 +169,8 @@ public class OdometryCorrection extends Thread {
 		{
 			return true;
 		}
-		return false;
+		else
+			return false;
 	} 
 }
 

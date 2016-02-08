@@ -32,13 +32,13 @@ public class Main
 		final TextLCD t = LocalEV3.get().getTextLCD();
 		odometryDisplay = new OdometryDisplay(odometer,t);
 		nav = new Navigator(leftMotor, rightMotor, headMotor, odometer);
-		//odometryCorrection = new OdometryCorrection(nav, odometer);
+		odometryCorrection = new OdometryCorrection(nav, odometer);
 		
 		//starting child threads
 		odometer.start(); 
 		odometryDisplay.start();
 		nav.start();
-		//odometryCorrection.start();
+		odometryCorrection.start();
 		
 		completeCourse();
 	}

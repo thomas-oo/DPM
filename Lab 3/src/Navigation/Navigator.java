@@ -291,26 +291,23 @@ public class Navigator extends Thread
 		//ROTATES UNTIL TURN IS COMPLETE.
 		if(turnTheta >= -Math.PI && turnTheta <= Math.PI)
 		{
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
-			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
-			System.out.println("a");
 		}
-		if(turnTheta < -Math.PI && turnTheta > -2*Math.PI)
+		else if(turnTheta < -Math.PI && turnTheta > -2*Math.PI)
 		{
 			turnTheta = turnTheta + 2*Math.PI;
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
-			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			System.out.println("a");
 		}
-		if(turnTheta>Math.PI && turnTheta < 2*Math.PI)
+		else if(turnTheta>Math.PI && turnTheta < 2*Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
-			leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
-			rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
+			System.out.println("b");
 		}
 		else
 		{
 			System.out.println("turnTheta error: " + turnTheta);
 		}
+		leftMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, turnTheta), true);
+		rightMotor.rotate(convertAngle(Main.rWheel, Main.dBase, turnTheta));
 	}
 	public boolean isNavigating() //returns true if another thread has called travelTo or turnTo
 	{
@@ -322,11 +319,11 @@ public class Navigator extends Thread
 	}
 	private static int convertDistance(double radius, double distance)  //converts linear distance that wheels need to travel into rotations (deg) that the wheels need to perform
 	{
-		return (int) ((180.0 * distance) / (Math.PI * radius));
+		return (int) ((90.0 * distance) / (Math.PI * radius));
 	}
 	private static int convertAngle(double radius, double width, double angle) //converts robot's turn into how much linear distance each wheel needs to travel.
 	{ //hopefully works
-		return convertDistance(radius, angle*width/2);
+		return convertDistance(radius, angle*width);
 	}
 	public void setNavigating(boolean isNavigating) //sets isNavigating if ever needed (unused here)
 	{
