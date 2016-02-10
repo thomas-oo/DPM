@@ -19,9 +19,6 @@ public class USLocalizer {
 	private double alpha;
 	private double beta;
 
-	private double[] nowDistance = new double[3];
-	private double nowX;
-	private double nowY;
 	private double nowTheta;
 
 	private boolean faceWall; //come up with a better name 
@@ -41,10 +38,8 @@ public class USLocalizer {
 		this.rightMotor = rightMotor;
 	}
 
-	public void doLocalization() {
-		double [] pos = new double [3];
-		double angleA, angleB;
-
+	public void doLocalization() 
+	{
 		if (locType == LocalizationType.FALLING_EDGE) 
 		{
 			usValue = getFilteredData();
@@ -52,7 +47,6 @@ public class USLocalizer {
 			done = false;
 			while(!done)
 			{
-
 				switch(state)
 				{
 				case INITWALL:
@@ -69,51 +63,63 @@ public class USLocalizer {
 						break;
 					}
 				case WALL:
-					// keep rotating until the robot sees a wall, then latch the angle
+					while (usValue < 50)
+					{
+						leftMotor.setSpeed(forwardSpeed);
+						rightMotor.setSpeed(-forwardSpeed);
+						leftMotor.forward();
+						rightMotor.forward();
+						usValue = getFilteredData();
+					}
+					leftMotor.stop();
+					rightMotor.stop();
+					state = State.FIRSTWALL;
+					break;
+				case FIRSTWALL:
 					while (usValue>50)
 					{
 						leftMotor.setSpeed(forwardSpeed); // keep rotating clockwise until it sees a wall
 						rightMotor.setSpeed(-forwardSpeed);
+						leftMotor.forward();
+						rightMotor.forward();
+						usValue = getFilteredData();
 					}
-					alpha = nowTheta;
-					state= State.FIRSTWALL;
+					leftMotor.stop();
+					rightMotor.stop();
+					alpha = odo.getTheta();
+					state= State.SECONDWALL;
 					break;
-
-				case FIRSTWALL:
-
+				case SECONDWALL:
 					while (usValue<50) //this needs to be changed
 					{
 						leftMotor.setSpeed(forwardSpeed); // rotate counterclockwise until it sees the second wall
 						rightMotor.setSpeed(-forwardSpeed);
+						leftMotor.forward();
+						rightMotor.forward();
+						usValue = getFilteredData();
 					}
-					beta = nowTheta;
-					state= State.SECONDWALL;
+					leftMotor.stop();
+					rightMotor.stop();
+					beta = odo.getTheta();
+					done = true;
 					break;
-
-				case SECONDWALL:
-
-					//case alpha<beta
-					if (!faceWall)
-					{
-						deltaTheta = 45-((alpha+beta)/2);
-						odo.setTheta(deltaTheta +beta);
-						turnTo(0);
-					}
-
-					//	case alpha>beta
-					if (faceWall)
-					{
-						deltaTheta = 225-((alpha+beta)/2);
-						odo.setTheta(deltaTheta +beta);
-						turnTo(0);
-					}
-
-				}	
+				}
 			}
-			// update the odometer position (example to follow:)
+			if (faceWall) //A>B
+			{
+				deltaTheta = 1.5*Math.PI -((alpha+beta)/2);
+				odo.setTheta(deltaTheta +beta);
+				turnTo(0);
+			}
+			else//A<B
+			{
+				deltaTheta = 0.5*Math.PI -((alpha+beta)/2);
+				odo.setTheta(deltaTheta +beta);
+				turnTo(0);
+			}
 			odo.setPosition(new double [] {0.0, 0.0, 0.0}, new boolean [] {true, true, true});
 		} 
-		else 
+		else if(locType == LocalizationType.RISING_EDGE)
 		{
 			//start by figuring out if we started facing the wall or not
 			usValue = getFilteredData();
@@ -166,7 +172,7 @@ public class USLocalizer {
 					//once we don't find a wall (rising edge), we are at alpha
 					leftMotor.stop();
 					rightMotor.stop();
-					alpha = convertToDeg(odo.getTheta()); //get the bounded degree reading of theta from the odometer and set to alpha.
+					alpha = odo.getTheta(); //get the bounded degree reading of theta from the odometer and set to alpha.
 					state = State.SECONDWALL; //ready to find beta now
 					break;
 				case SECONDWALL: //find beta
@@ -190,21 +196,21 @@ public class USLocalizer {
 					//once we don't find a wall (rising edge), we are at beta
 					leftMotor.stop();
 					rightMotor.stop();
-					beta = convertToDeg(odo.getTheta()); //get the bounded degree reading of theta from the odometer and set to beta.
+					beta = odo.getTheta(); //get the bounded degree reading of theta from the odometer and set to beta.
 					done = true; //we have now found beta AND alpha, we are "done"
 					break;
 				}
 			}
 			//we get to this part of the code once done = true;
-			if (faceWall) // B<A
+			if (faceWall) // A>B
 			{
-				deltaTheta = 45 - ((alpha+beta)/2);
+				deltaTheta = 0.5*Math.PI - ((alpha+beta)/2);
 				odo.setTheta(deltaTheta + beta);
 				turnTo(0);
 			}
-			else //B>A
+			else //A<B
 			{
-				deltaTheta = 225 - ((alpha+beta)/2);
+				deltaTheta = 1.5*Math.PI - ((alpha+beta)/2);
 				odo.setTheta(deltaTheta + beta);
 				turnTo(0);
 			}
@@ -228,6 +234,8 @@ public class USLocalizer {
 
 	private void turnTo(double destTheta) //uses destTheta and nowTheta to calculate AND TURN required minimal angle.
 	{
+		nowTheta = odo.getTheta();
+
 		setSpeeds(forwardSpeed, forwardSpeed); //set speeds as we will be moving.
 
 		double turnTheta = destTheta - nowTheta; //dest and nowTheta both are from [0,2pi]

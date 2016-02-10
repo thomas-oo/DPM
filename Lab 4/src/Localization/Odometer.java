@@ -16,7 +16,7 @@ public class Odometer extends Thread {
 	public Odometer(double rWheel, double dBase) {
 		x = 0.0;
 		y = 0.0;
-		theta = 0.5*Math.PI;
+		theta = 0;
 		this.leftMotor = Lab4.leftMotor;
 		this.rightMotor = Lab4.rightMotor;
 		this.rWheel = rWheel;
