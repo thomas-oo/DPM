@@ -14,12 +14,13 @@ public class USLocalizer {
 	private EV3LargeRegulatedMotor leftMotor;
 	private EV3LargeRegulatedMotor rightMotor;
 
-	private float usValue;
-	private int forwardSpeed = 150;
+	private double usValue;
+	private int forwardSpeed = 30;
 	private double alpha;
 	private double beta;
 
 	private double nowTheta;
+	private double distance;
 
 	private boolean faceWall; //come up with a better name 
 	private double deltaTheta;
@@ -65,10 +66,7 @@ public class USLocalizer {
 				case WALL:
 					while (usValue < 50)
 					{
-						leftMotor.setSpeed(forwardSpeed);
-						rightMotor.setSpeed(-forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateClockwise();
 						usValue = getFilteredData();
 					}
 					leftMotor.stop();
@@ -78,10 +76,7 @@ public class USLocalizer {
 				case FIRSTWALL:
 					while (usValue>50)
 					{
-						leftMotor.setSpeed(forwardSpeed); // keep rotating clockwise until it sees a wall
-						rightMotor.setSpeed(-forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateClockwise();
 						usValue = getFilteredData();
 					}
 					leftMotor.stop();
@@ -92,10 +87,12 @@ public class USLocalizer {
 				case SECONDWALL:
 					while (usValue<50) //this needs to be changed
 					{
-						leftMotor.setSpeed(forwardSpeed); // rotate counterclockwise until it sees the second wall
-						rightMotor.setSpeed(-forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateClockwise();
+						usValue = getFilteredData();
+					}
+					while (usValue>50)
+					{
+						rotateClockwise();
 						usValue = getFilteredData();
 					}
 					leftMotor.stop();
@@ -147,10 +144,7 @@ public class USLocalizer {
 				case NOWALL:
 					while (usValue > 50) //will turn counterclockwise until we find a wall.
 					{
-						leftMotor.setSpeed(-forwardSpeed);
-						rightMotor.setSpeed(forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateCounterClockwise();
 						usValue = getFilteredData();
 					}
 					//when we do finally arrive at a wall, we will be facing the left wall (primed to find alpha)
@@ -163,10 +157,7 @@ public class USLocalizer {
 					usValue = getFilteredData();
 					while(usValue < 50) //keep rotating counterclockwise until we DON'T find a wall
 					{
-						leftMotor.setSpeed(-forwardSpeed);
-						rightMotor.setSpeed(forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateCounterClockwise();
 						usValue = getFilteredData();
 					}
 					//once we don't find a wall (rising edge), we are at alpha
@@ -179,18 +170,12 @@ public class USLocalizer {
 					usValue = getFilteredData();
 					while(usValue>50) //this is here in case we overshot alpha, and now have to turn clockwise to find the wall again
 					{
-						leftMotor.setSpeed(forwardSpeed); 
-						rightMotor.setSpeed(-forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateClockwise();
 						usValue = getFilteredData();
 					}
 					while(usValue<50) //we rotate clockwise until we DON'T see a wall
 					{
-						leftMotor.setSpeed(forwardSpeed);
-						rightMotor.setSpeed(-forwardSpeed);
-						leftMotor.forward();
-						rightMotor.forward();
+						rotateClockwise();
 						usValue = getFilteredData();
 					}
 					//once we don't find a wall (rising edge), we are at beta
@@ -216,6 +201,20 @@ public class USLocalizer {
 			}
 			odo.setPosition(new double [] {0.0, 0.0, 0.0}, new boolean [] {true, true, true});
 		}
+	}
+
+	private void rotateCounterClockwise() {
+		leftMotor.setSpeed(-forwardSpeed);
+		rightMotor.setSpeed(forwardSpeed);
+		leftMotor.forward();
+		rightMotor.forward();
+	}
+
+	private void rotateClockwise() {
+		leftMotor.setSpeed(forwardSpeed);
+		rightMotor.setSpeed(-forwardSpeed);
+		leftMotor.forward();
+		rightMotor.forward();
 	}
 	private double convertToDeg(double theta) {
 		if(theta > 2*Math.PI)
@@ -275,10 +274,17 @@ public class USLocalizer {
 	{
 		return (int) ((90.0 * distance) / (Math.PI * radius));
 	}
-	private float getFilteredData() {
+	public double getFilteredData() {
 		usSensor.fetchSample(usData, 0);
-		float distance = usData[0];
-
+		distance = (double)(usData[0]*100.0);
+		if(distance > 50)
+		{
+			distance = 50;
+		}
+		else if(distance < 0)
+		{
+			distance = 50;
+		}
 		return distance;
 	}
 

@@ -34,9 +34,9 @@ public class Lab4 {
 				
 		Odometer odo = new Odometer(rWheel, dBase);
 		odo.start();
-		LCDInfo lcd = new LCDInfo(odo);
 		
 		USLocalizer usl = new USLocalizer(odo, usValue, usData, USLocalizer.LocalizationType.FALLING_EDGE, leftMotor, rightMotor);
+		LCDInfo lcd = new LCDInfo(odo,usl);
 		usl.doLocalization();
 		
 /*		LightLocalizer lsl = new LightLocalizer(odo, colorValue, colorData);

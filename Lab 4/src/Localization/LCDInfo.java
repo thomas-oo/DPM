@@ -8,14 +8,16 @@ import lejos.utility.TimerListener;
 public class LCDInfo implements TimerListener{
 	public static final int LCD_REFRESH = 100;
 	private Odometer odo;
+	private USLocalizer usl;
 	private Timer lcdTimer;
 	private TextLCD LCD = LocalEV3.get().getTextLCD();;
 	
 	// arrays for displaying data
 	private double [] pos;
 	
-	public LCDInfo(Odometer odo) {
+	public LCDInfo(Odometer odo, USLocalizer usl) {
 		this.odo = odo;
+		this.usl = usl;
 		this.lcdTimer = new Timer(LCD_REFRESH, this);
 		
 		// initialise the arrays for displaying data
@@ -31,8 +33,10 @@ public class LCDInfo implements TimerListener{
 		LCD.drawString("X: ", 0, 0);
 		LCD.drawString("Y: ", 0, 1);
 		LCD.drawString("THETA: ", 0, 2);
+		LCD.drawString("D: ", 0, 3);
 		LCD.drawInt((int)(pos[0] * 10), 3, 0);
 		LCD.drawInt((int)(pos[1] * 10), 3, 1);
-		LCD.drawInt((int)(pos[2] * 57.2598), 3, 2);
+		LCD.drawInt((int)(pos[2] * 57.2598), 7, 2);
+		LCD.drawInt((int)(usl.getFilteredData()), 3, 3);
 	}
 }
