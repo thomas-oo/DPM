@@ -28,6 +28,10 @@ public class USPoller extends Thread
 		{
 			us.fetchSample(usData,0);
 			distance = (usData[0] * 100.000000000000000);
+			if(distance > 200)
+			{
+				distance = 200;
+			}
 			theta = odo.getTheta();
 			if(index >= numSamples)
 			{
