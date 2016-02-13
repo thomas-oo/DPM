@@ -29,7 +29,7 @@ public class Lab4 {
 	public static int motorHigh = 200;
 
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		
 		
 /*		int option = 0;
@@ -65,9 +65,9 @@ public class Lab4 {
 			break;
 		}*/
 		
-/*		USLocalizer usl = new USLocalizer(odo, usValue, usData, USLocalizer.LocalizationType.FALLING_EDGE, leftMotor, rightMotor);
+		USLocalizer usl = new USLocalizer(odo, usValue, usData, USLocalizer.LocalizationType.FALLING_EDGE, leftMotor, rightMotor);
 		LCDInfo lcd = new LCDInfo(odo,usl);
-		usl.doLocalization();*/
+		usl.doLocalization();
 		
 		
 		LightLocalizer lsl = new LightLocalizer(odo, colorValue, colorData);

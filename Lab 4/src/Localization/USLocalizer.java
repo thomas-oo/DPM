@@ -399,7 +399,7 @@ public class USLocalizer {
 			System.out.println("turnTheta error: " + turnTheta);
 		}
 		leftMotor.rotate(-convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta), true);
-		rightMotor.rotate(convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta), true);
+		rightMotor.rotate(convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta));
 	}
 
 	private void setSpeeds(int leftSpeed, int rightSpeed) //sets motor speeds
