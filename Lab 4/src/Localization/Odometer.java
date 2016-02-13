@@ -13,7 +13,7 @@ public class Odometer extends Thread {
 
 	private Object lock;
 
-	public Odometer(double rWheel, double dBase) {
+	public Odometer(double rWheel, double dBase) { //positive x-axis is 0, increases counter clockwise
 		x = 0.0;
 		y = 0.0;
 		theta = 0;
@@ -138,7 +138,17 @@ public class Odometer extends Thread {
 	}
 
 	public void setTheta(double theta) {
-		synchronized (lock) {
+		synchronized (lock) 
+		{
+			if(theta < 0)
+			{
+				theta += 2 * Math.PI;
+			}
+			if(theta > 2*Math.PI)
+			{
+				theta -= 2 * Math.PI;
+
+			}
 			this.theta = theta;
 		}
 	}

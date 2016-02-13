@@ -1,5 +1,8 @@
 package Localization;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.robotics.SampleProvider;
 
@@ -14,10 +17,14 @@ public class USLocalizer {
 	private EV3LargeRegulatedMotor leftMotor;
 	private EV3LargeRegulatedMotor rightMotor;
 
+
+	private double maxDist = 200; //max distance observable by the us sensor
 	private double usValue;
-	private int forwardSpeed = 30;
-	private double alpha;
-	private double beta;
+	private int forwardSpeed = 70;
+	public double minimumDistA;
+	public double minimumDistB;
+	public double alpha;
+	public double beta;
 
 	private double nowTheta;
 	private double distance;
@@ -25,6 +32,12 @@ public class USLocalizer {
 	private boolean faceWall; //come up with a better name 
 	private double deltaTheta;
 	private boolean done; //alpha and betas are determined
+
+	private double sumOfMinTheta = 0; //used for averaging
+	private double numberOfMinTheta = 0; //used for averaging
+	
+	private double sumOfMinThetaB = 0;
+	private double numberOfMinThetaB = 0;
 
 
 	enum State {INITWALL, NOWALL, WALL, FIRSTWALL, SECONDWALL};
@@ -51,21 +64,24 @@ public class USLocalizer {
 				switch(state)
 				{
 				case INITWALL:
-					if (usValue>50)
+					System.out.println("INITWALL");
+					if (usValue>= 50) //when the robot isn't facing the wall
 					{
 						faceWall = false;
 						state= State.FIRSTWALL;
 						break;
 					}
-					else
+					else //if the robot starts off with facing the wall
 					{
 						faceWall = true;
 						state = State.WALL;
 						break;
 					}
-				case WALL:
-					while (usValue < 50)
+				case WALL: //makes you not face a wall
+					System.out.println("WALL");
+					while (usValue < 200)
 					{
+						System.out.println("WALL LOOP");
 						rotateClockwise();
 						usValue = getFilteredData();
 					}
@@ -73,45 +89,170 @@ public class USLocalizer {
 					rightMotor.stop();
 					state = State.FIRSTWALL;
 					break;
+
 				case FIRSTWALL:
-					while (usValue>50)
+					//make robot rotate until it detects a distance of 50 
+					while (usValue>=50) //the equal sign should also take care of overflow
 					{
 						rotateClockwise();
 						usValue = getFilteredData();
 					}
+					System.out.println("Analyze start");
+					//once the robot gets within a value of 50cm, have it start determining alpha
+					//goal: to detect alpha
+					usValue = getFilteredData(); 
+					minimumDistA = usValue;
+					boolean firstWallDone = false;
+					ArrayList<double[]> storedData = new ArrayList<double[]>(); 
+					while(!firstWallDone)
+					{
+						System.out.println("outLoop usValue" + usValue);
+						System.out.println("outLoop inDistA" + minimumDistA);
+						System.out.println();
+						System.out.println();
+						if(usValue <= minimumDistA) //collecting data
+						{
+							System.out.println("insideLoop usValue" + usValue);
+							System.out.println("insideLoop inDistA" + minimumDistA);
+							minimumDistA = usValue;
+							storedData.add(new double[] {odo.getTheta(), minimumDistA});
+							
+							for (double[] p : storedData)
+							    System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+
+							rotateClockwise();
+							usValue=getFilteredData();
+						}
+						else //analyzing data
+						{
+							for(int i = storedData.size() - 1; i >= 0; i--)
+							{
+								if((storedData.get(i))[1] == minimumDistA)
+								{
+									sumOfMinTheta += (storedData.get(i))[0];
+									System.out.println("sumOfMinTheta" + sumOfMinTheta);
+									numberOfMinTheta ++;
+									System.out.println("numberOfMinTheta" + numberOfMinTheta);
+								}
+							}
+							alpha = sumOfMinTheta / numberOfMinTheta;
+							firstWallDone = true;
+						}
+					}
+
+					//once it gets out of the loop, the robot should have overshoot, and it should determine the alpha
+					//by using the midpoint of the array of sae values
+					System.out.println(alpha * 57.296);
+					System.out.println("Complete");
 					leftMotor.stop();
 					rightMotor.stop();
-					alpha = odo.getTheta();
-					state= State.SECONDWALL;
+					state = State.SECONDWALL;
 					break;
 				case SECONDWALL:
-					while (usValue<50) //this needs to be changed
+					int count = 0;
+					while (count < 5) //to get out of wall, detect value of 200>= , 5 times
 					{
-						rotateClockwise();
+						while(usValue < 200)
+						{
+							rotateCounterClockwise();
+							usValue = getFilteredData();
+						}
+						rotateCounterClockwise();
+						usValue = getFilteredData();
+						count++;
+					}
+	
+					System.out.println("Analyze start");
+					while (usValue>=50) //to turn to left wall
+					{
+						rotateCounterClockwise();
 						usValue = getFilteredData();
 					}
-					while (usValue>50)
+					System.out.println("Analyze start");
+					//once the robot gets within a value of 50cm, have it start determining beta
+					//goal: to detect beta
+					usValue = getFilteredData(); 
+					minimumDistB = usValue;
+					boolean secondWallDone = false;
+					ArrayList<double[]> storedDataB = new ArrayList<double[]>(); 
+					while(!secondWallDone)
 					{
-						rotateClockwise();
-						usValue = getFilteredData();
+						System.out.println("outLoop usValue" + usValue);
+						System.out.println("outLoop inDistB" + minimumDistB);
+						System.out.println();
+						System.out.println();
+						if(usValue <= minimumDistB) //collecting data
+						{
+							System.out.println("insideLoop usValue" + usValue);
+							System.out.println("insideLoop inDistB" + minimumDistB);
+							minimumDistB = usValue;
+							storedDataB.add(new double[] {odo.getTheta(), minimumDistB});
+							
+							for (double[] p : storedDataB)
+							    System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+
+							rotateCounterClockwise();
+							usValue=getFilteredData();
+							if (usValue ==200)
+							{
+								usValue = minimumDistB;
+							}
+						}
+						else //analyzing data
+						{
+							boolean flag = false;
+							boolean sumIsLarger = false;
+							for(int i = 0; i < storedDataB.size(); i++)
+							{
+								if((storedDataB.get(i))[1] == minimumDistB)
+								{
+									if((storedDataB.get(i))[0] < 0.25*Math.PI)
+									{
+										sumOfMinThetaB += (storedDataB.get(i))[0] + 2*Math.PI;
+										System.out.println("sumOfMinThetaB: " + sumOfMinThetaB);
+										sumIsLarger = true;
+									}
+									else
+									{
+										sumOfMinThetaB += (storedDataB.get(i))[0];
+										System.out.println("sumOfMinThetaB: " + sumOfMinThetaB);
+									}
+									numberOfMinThetaB ++;
+									System.out.println("numberOfMinThetaB: " + numberOfMinThetaB);
+								}
+							}
+							beta = sumOfMinThetaB / numberOfMinThetaB;
+							if(sumIsLarger)
+							{
+								//beta -= 2*Math.PI;
+							}
+							secondWallDone = true;
+						}
 					}
+
+					//once it gets out of the loop, the robot should have overshoot, and it should determine the alpha
+					//by using the midpoint of the array of sae values
+					System.out.println(beta * 57.296);
+					System.out.println("Complete");
 					leftMotor.stop();
 					rightMotor.stop();
-					beta = odo.getTheta();
 					done = true;
 					break;
 				}
 			}
+			turnTo(beta);
 			if (faceWall) //A>B
 			{
-				deltaTheta = 1.5*Math.PI -((alpha+beta)/2);
-				odo.setTheta(deltaTheta +beta);
+				deltaTheta = 0.25*Math.PI -((alpha+beta)/2);
+				odo.setTheta(deltaTheta+beta);
+				System.out.println("faceWall: " + faceWall + " Setting theta to: "+ (deltaTheta) + "turning to 0");
 				turnTo(0);
 			}
 			else//A<B
 			{
-				deltaTheta = 0.5*Math.PI -((alpha+beta)/2);
-				odo.setTheta(deltaTheta +beta);
+				deltaTheta = 1.25*Math.PI -((alpha+beta)/2);
+				odo.setTheta(deltaTheta+beta);
+				System.out.println("faceWall: " + faceWall + " Setting theta to: "+ (deltaTheta) + "turning to 0");
 				turnTo(0);
 			}
 			odo.setPosition(new double [] {0.0, 0.0, 0.0}, new boolean [] {true, true, true});
@@ -189,13 +330,13 @@ public class USLocalizer {
 			//we get to this part of the code once done = true;
 			if (faceWall) // A>B
 			{
-				deltaTheta = 0.5*Math.PI - ((alpha+beta)/2);
+				deltaTheta = 0.25*Math.PI - ((alpha+beta)/2);
 				odo.setTheta(deltaTheta + beta);
 				turnTo(0);
 			}
 			else //A<B
 			{
-				deltaTheta = 1.5*Math.PI - ((alpha+beta)/2);
+				deltaTheta = 1.25*Math.PI - ((alpha+beta)/2);
 				odo.setTheta(deltaTheta + beta);
 				turnTo(0);
 			}
@@ -204,17 +345,17 @@ public class USLocalizer {
 	}
 
 	private void rotateCounterClockwise() {
-		leftMotor.setSpeed(-forwardSpeed);
+		leftMotor.setSpeed(forwardSpeed);
 		rightMotor.setSpeed(forwardSpeed);
-		leftMotor.forward();
+		leftMotor.backward();
 		rightMotor.forward();
 	}
 
 	private void rotateClockwise() {
 		leftMotor.setSpeed(forwardSpeed);
-		rightMotor.setSpeed(-forwardSpeed);
+		rightMotor.setSpeed(forwardSpeed);
 		leftMotor.forward();
-		rightMotor.forward();
+		rightMotor.backward();
 	}
 	private double convertToDeg(double theta) {
 		if(theta > 2*Math.PI)
@@ -258,7 +399,7 @@ public class USLocalizer {
 			System.out.println("turnTheta error: " + turnTheta);
 		}
 		leftMotor.rotate(-convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta), true);
-		rightMotor.rotate(convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta));
+		rightMotor.rotate(convertAngle(Lab4.rWheel, Lab4.dBase, turnTheta), true);
 	}
 
 	private void setSpeeds(int leftSpeed, int rightSpeed) //sets motor speeds
@@ -277,11 +418,11 @@ public class USLocalizer {
 	public double getFilteredData() {
 		usSensor.fetchSample(usData, 0);
 		distance = (double)(usData[0]*100.0);
-		if(distance > 50)
+		if(distance > maxDist)//so all distances bigger than 50 will be set to 50??
 		{
-			distance = 50;
+			distance = maxDist;
 		}
-		else if(distance < 0)
+		else if(distance < 0)//smaller than 0 or 50?
 		{
 			distance = 50;
 		}
