@@ -13,7 +13,8 @@ public class Odometer extends Thread {
 
 	private Object lock;
 
-	public Odometer(double rWheel, double dBase) { //positive x-axis is 0, increases counter clockwise
+	public Odometer(double rWheel, double dBase) //positive x-axis is 0, increases counter clockwise
+	{
 		x = 0.0;
 		y = 0.0;
 		theta = 0;
@@ -31,7 +32,7 @@ public class Odometer extends Thread {
 	public void run() {
 		long updateStart, updateEnd;
 
-		while (true) { //use tachocounts of left andd right motors to determine linear movement as well as how its heading changed
+		while (true) { //use tachocounts of left and right motors to determine linear movement as well as how its heading changed
 			updateStart = System.currentTimeMillis();
 			nowTachoLeft = leftMotor.getTachoCount();
 			nowTachoRight = rightMotor.getTachoCount();

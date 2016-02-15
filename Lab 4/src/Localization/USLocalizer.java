@@ -7,37 +7,46 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.robotics.SampleProvider;
 
 public class USLocalizer {
-	public enum LocalizationType { FALLING_EDGE, RISING_EDGE };
-	public static double ROTATION_SPEED = 30;
+	public enum LocalizationType {FALLING_EDGE, RISING_EDGE};
 
 	private Odometer odo;
-	private SampleProvider usSensor;
+	
+	//fields for ultrasonic sensor
+	private SampleProvider usSensor;	
 	private float[] usData;
+	private double usValue;
+	
 	private LocalizationType locType;
 	private EV3LargeRegulatedMotor leftMotor;
 	private EV3LargeRegulatedMotor rightMotor;
 
 
-	private double maxDist = 200; //max distance observable by the us sensor
-	private double usValue;
+	private double maxDist = 200; //value to bring down all readings (returned by the ultrasonic sensor) to
 	private int forwardSpeed = 70;
+	
+	//stores distance at which we detected alpha and beta in cm
 	public double minimumDistA;
 	public double minimumDistB;
+	
+	//stores angles of alpha and beta in radians
 	public double alpha;
 	public double beta;
 
 	private double nowTheta;
 	private double distance;
 
-	private boolean faceWall; //come up with a better name 
-	private double deltaTheta;
-	private boolean done; //alpha and betas are determined
-
-	private double sumOfMinTheta = 0; //used for averaging
-	private double numberOfMinTheta = 0; //used for averaging
+	private boolean faceWall; //flag to see if we are detecting a wall
 	
+	//used for averaging theta at which we detected alpha
+	private double sumOfMinTheta = 0;
+	private double numberOfMinTheta = 0;
+
+	//used for averaging theta at which we detected beta
 	private double sumOfMinThetaB = 0;
 	private double numberOfMinThetaB = 0;
+	
+	private double deltaTheta; //stores the adjustment we add to our current theta reading to finish localization
+	private boolean done; //alpha and betas are determined
 
 
 	enum State {INITWALL, NOWALL, WALL, FIRSTWALL, SECONDWALL};
@@ -65,7 +74,7 @@ public class USLocalizer {
 				{
 				case INITWALL:
 					System.out.println("INITWALL");
-					if (usValue>= 50) //when the robot isn't facing the wall
+					if (usValue >= 50) //when the robot isn't facing the wall
 					{
 						faceWall = false;
 						state= State.FIRSTWALL;
@@ -116,15 +125,17 @@ public class USLocalizer {
 							System.out.println("insideLoop inDistA" + minimumDistA);
 							minimumDistA = usValue;
 							storedData.add(new double[] {odo.getTheta(), minimumDistA});
-							
+
 							for (double[] p : storedData)
-							    System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+								System.out.println("theta : " + p[0] + ", distance: " + p[1]);
 
 							rotateClockwise();
 							usValue=getFilteredData();
 						}
 						else //analyzing data
 						{
+							leftMotor.stop();
+							rightMotor.stop();
 							for(int i = storedData.size() - 1; i >= 0; i--)
 							{
 								if((storedData.get(i))[1] == minimumDistA)
@@ -146,6 +157,7 @@ public class USLocalizer {
 					System.out.println("Complete");
 					leftMotor.stop();
 					rightMotor.stop();
+					
 					state = State.SECONDWALL;
 					break;
 				case SECONDWALL:
@@ -161,35 +173,43 @@ public class USLocalizer {
 						usValue = getFilteredData();
 						count++;
 					}
-	
-					System.out.println("Analyze start");
+					
 					while (usValue>=50) //to turn to left wall
 					{
 						rotateCounterClockwise();
 						usValue = getFilteredData();
 					}
+					
 					System.out.println("Analyze start");
 					//once the robot gets within a value of 50cm, have it start determining beta
 					//goal: to detect beta
-					usValue = getFilteredData(); 
-					minimumDistB = usValue;
-					boolean secondWallDone = false;
+					
+					usValue = getFilteredData();
+					minimumDistB = usValue; //initialize the minimumDist to the current distance
+					boolean secondWallDone = false; //flag
+					
+					//Arraylist to which we store corresponding distance and theta readings
 					ArrayList<double[]> storedDataB = new ArrayList<double[]>(); 
-					while(!secondWallDone)
+					
+					while(!secondWallDone) //loops until we are done finding beta
 					{
+						//printing for debugging
 						System.out.println("outLoop usValue" + usValue);
 						System.out.println("outLoop inDistB" + minimumDistB);
 						System.out.println();
 						System.out.println();
-						if(usValue <= minimumDistB) //collecting data
+						
+						//as long as the most recent ultrasonic reading is lower than the previous one (falling edge)
+						//keep storing new distance and theta readings into storedData
+						if(usValue <= minimumDistB)
 						{
 							System.out.println("insideLoop usValue" + usValue);
 							System.out.println("insideLoop inDistB" + minimumDistB);
 							minimumDistB = usValue;
 							storedDataB.add(new double[] {odo.getTheta(), minimumDistB});
-							
+
 							for (double[] p : storedDataB)
-							    System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+								System.out.println("theta : " + p[0] + ", distance: " + p[1]);
 
 							rotateCounterClockwise();
 							usValue=getFilteredData();
@@ -269,7 +289,8 @@ public class USLocalizer {
 				switch (state) 
 				{
 				case INITWALL:
-					if (usValue > 50) 
+					System.out.println("INITWALL");
+					if (usValue >= 50) 
 					{
 						faceWall = false;
 						state = State.NOWALL;
@@ -282,8 +303,9 @@ public class USLocalizer {
 						break;
 					}
 
-				case NOWALL:
-					while (usValue > 50) //will turn counterclockwise until we find a wall.
+				case NOWALL: //makes you facce a wall
+					System.out.println("NOWALL");
+					while (usValue >= 50)
 					{
 						rotateCounterClockwise();
 						usValue = getFilteredData();
@@ -295,34 +317,145 @@ public class USLocalizer {
 					break;
 
 				case FIRSTWALL: //find alpha
+					System.out.println("FIRSTWALL");
+					
 					usValue = getFilteredData();
-					while(usValue < 50) //keep rotating counterclockwise until we DON'T find a wall
+					boolean firstWallDone = false;
+					ArrayList<double[]> storedData = new ArrayList<double[]>();
+					
+					while(!firstWallDone)
 					{
-						rotateCounterClockwise();
-						usValue = getFilteredData();
+						if(usValue < maxDist) //if usValue is less than 200, (still detecting a wall)
+						{
+							storedData.add(new double[] {odo.getTheta(), usValue}); //store that distance into an arraylist with its corresponding theta
+
+							for (double[] p : storedData) //printer for debugging
+								System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+
+							rotateCounterClockwise(); //rotate clockwise
+							usValue = getFilteredData(); //get an updated usValue
+						}
+						else //thus now ready to process distance.
+						{
+							leftMotor.stop();
+							rightMotor.stop();
+							
+							//traverse the ArrayList from the MOST RECENT arrays to the EARLIEST arrays
+							//traverse the arraylist, looking at the distances ([1]) and store the min value until the "next" distance value is larger
+							//this avoids just finding the min distance in the entire arraylist which may make it possible to find b instead of finding a (which is unintended)
+							
+							//NOTE: arrayList add appends the latest double[] onto the END of the arrayList
+							
+							minimumDistA = maxDist;
+							
+							for(int i = storedData.size() - 1; i >= 0; i--)
+							{
+								System.out.println("Distance values at index " + i + " : " + (storedData.get(i))[1]);
+								System.out.println("Theta values at index " + i + " : " + (storedData.get(i))[0]);
+								System.out.println("sumOfMinTheta: " + sumOfMinTheta);
+								System.out.println("new minimumDistA: " + minimumDistA);
+								
+								if((storedData.get(i))[1] < minimumDistA) //whenever we see a new min dist, set the sum to be that min
+								{
+									minimumDistA = (storedData.get(i))[1];
+									sumOfMinTheta = (storedData.get(i))[0];
+									numberOfMinTheta = 1;
+									System.out.println("new minDistA");
+								}
+								else if((storedData.get(i))[1] == minimumDistA)
+								{
+									sumOfMinTheta += (storedData.get(i))[0];
+									numberOfMinTheta ++;
+									System.out.println("repeated minDistA");
+								}
+								else
+								{
+									System.out.println("increase detected");
+									break;
+								}
+							}
+							alpha = sumOfMinTheta / numberOfMinTheta;
+							System.out.println("sumOfMinTheta: " + sumOfMinTheta);
+							System.out.println("numberOfMinTheta: " + numberOfMinTheta);
+							firstWallDone = true;
+						}
 					}
-					//once we don't find a wall (rising edge), we are at alpha
+					System.out.println("alpha: " + (alpha * 57.296));
+					System.out.println("Completed first wall");
 					leftMotor.stop();
 					rightMotor.stop();
-					alpha = odo.getTheta(); //get the bounded degree reading of theta from the odometer and set to alpha.
+
 					state = State.SECONDWALL; //ready to find beta now
 					break;
 				case SECONDWALL: //find beta
+					System.out.println("SECONDWALL");
+					
 					usValue = getFilteredData();
-					while(usValue>50) //this is here in case we overshot alpha, and now have to turn clockwise to find the wall again
+					boolean secondWallDone = false;
+					ArrayList<double[]> storedDataB = new ArrayList<double[]>();
+					while(usValue >= 50) //gets it to detected a wall again (will be pointed at back wall once this is done)
 					{
 						rotateClockwise();
 						usValue = getFilteredData();
 					}
-					while(usValue<50) //we rotate clockwise until we DON'T see a wall
+					
+					
+					while(!secondWallDone)
 					{
-						rotateClockwise();
-						usValue = getFilteredData();
+						if(usValue < maxDist)
+						{
+							storedDataB.add(new double[] {odo.getTheta(), usValue});
+							for(double[] p : storedDataB)
+							{
+								System.out.println("theta : " + p[0] + ", distance: " + p[1]);
+							}
+							rotateClockwise();
+							usValue = getFilteredData();
+						}
+						else
+						{
+							leftMotor.stop();
+							rightMotor.stop();
+							
+							minimumDistB = maxDist;
+							for(int i = storedDataB.size() - 1; i >= 0; i--)
+							{
+								System.out.println("Distance values at index " + i + " : " + (storedDataB.get(i))[1]);
+								System.out.println("Theta values at index " + i + " : " + (storedDataB.get(i))[0]);
+								System.out.println("sumOfMinTheta: " + sumOfMinThetaB);
+								System.out.println("new minimumDistA: " + minimumDistB);
+								
+								if((storedDataB.get(i))[1] < minimumDistB) //whenever we see a new min dist, set the sum to be that min
+								{
+									minimumDistB = (storedDataB.get(i))[1];
+									sumOfMinThetaB = (storedDataB.get(i))[0];
+									numberOfMinThetaB = 1;
+									System.out.println("new minDistB");
+								}
+								else if((storedDataB.get(i))[1] == minimumDistB)
+								{
+									sumOfMinThetaB += (storedDataB.get(i))[0];
+									numberOfMinThetaB ++;
+									System.out.println("repeated minDistB");
+								}
+								else
+								{
+									System.out.println("increase detected");
+									break;
+								}
+							}
+							
+							beta = sumOfMinThetaB / numberOfMinThetaB;
+							System.out.println("sumOfMinThetaB: " + sumOfMinThetaB);
+							System.out.println("numberOfMinThetaB: " + numberOfMinThetaB);
+							secondWallDone = true;
+						}
 					}
-					//once we don't find a wall (rising edge), we are at beta
+					System.out.println("beta: " + (beta * 57.296));
+					System.out.println("Completed second wall");
 					leftMotor.stop();
 					rightMotor.stop();
-					beta = odo.getTheta(); //get the bounded degree reading of theta from the odometer and set to beta.
+					
 					done = true; //we have now found beta AND alpha, we are "done"
 					break;
 				}
@@ -344,20 +477,23 @@ public class USLocalizer {
 		}
 	}
 
-	private void rotateCounterClockwise() {
+	private void rotateCounterClockwise() 
+	{
 		leftMotor.setSpeed(forwardSpeed);
 		rightMotor.setSpeed(forwardSpeed);
 		leftMotor.backward();
 		rightMotor.forward();
 	}
 
-	private void rotateClockwise() {
+	private void rotateClockwise() 
+	{
 		leftMotor.setSpeed(forwardSpeed);
 		rightMotor.setSpeed(forwardSpeed);
 		leftMotor.forward();
 		rightMotor.backward();
 	}
-	private double convertToDeg(double theta) {
+	private double convertToDeg(double theta) 
+	{
 		if(theta > 2*Math.PI)
 		{
 			theta = theta- 2*Math.PI;

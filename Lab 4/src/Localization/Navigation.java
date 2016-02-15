@@ -1,11 +1,6 @@
 package Localization;
 
-import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
-import lejos.hardware.port.Port;
-import lejos.hardware.sensor.EV3UltrasonicSensor;
-import lejos.hardware.sensor.SensorModes;
-import lejos.robotics.SampleProvider;
 
 public class Navigation extends Thread
 {
@@ -30,58 +25,35 @@ public class Navigation extends Thread
 	private boolean isCorrecting;
 	
 	//motors that need to be used
-	private EV3LargeRegulatedMotor leftMotor, rightMotor, headMotor;
+	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 
 	//classes that navigator depends on
 	private Odometer odometer;
-	//private ObstacleAvoidance avoidance;
 	
-/*	//buffers for accessing ultrasonic data
-	public float[] usData;
-	public double usDistance;
-	public SampleProvider usSampleProvider;
-	public SensorModes usSensor;*/
-	
-	//variables that are set in main, passed here
-	private final int bandCenter, bandWidth;
-	private final int motorLow, motorHigh;
 
-	public Navigation(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, Odometer odometer,int bandCenter,
-			int bandwidth, int motorLow, int motorHigh)
+	public Navigation(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, Odometer odometer)
 	{
 		this.odometer = odometer;
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
-		this.headMotor = headMotor;
-		
-		this.bandCenter = Lab4.bandCenter;
-		this.bandWidth = Lab4.bandWidth;
-		this.motorLow = Lab4.motorLow; 
-		this.motorHigh = Lab4.motorHigh;
 	}
 
-	enum State {INIT,WALL,TURNING, TRAVELING};
+	enum State {INIT, TURNING, TRAVELING};
 
 	public void run()
 	{
-		//4 states
+		//3 states
 			//state for initializing
 				//if navigator has a destination, go to state turning
 			//state for turning
 				//turn to the destination theta if it isn't already facing that direction
 					//go to state traveling
 			//state for traveling
-				//before moving forward, check if there is an emergency (wall), if so, go to state wall
-				//if no emergency, check if you are already at the waypoint, 
+				//check if you are already at the waypoint, 
 					//if not, move with forward speed
 						//for the next cycle, recalc a the latest destination theta with latest coordinates from odometer
 						//on next cycle, go to state init to make sure that you are heading in the new theta direction
-					//if so, stop, and set the flag isNavigating to false, lets the main method know that the waypoint is reached.
-			//state for wall
-				//if a wall is detected, turn 90 deg clockwise and position the camera at a 45 degree angle towards the wall.
-					//start avoidance (navigator thread is blocked UNTIL avoidance is done.
-						//avoidance continues until your coordinate is within the vector connecting where you first detected the wall, to the waypoint
-							//once that is done, you should be safe so turn back 90 deg and go to state init to continue with your path.
+					//if so, stop, and set the flag isNavigating to false, lets the main method know that the waypoint is reached
 		State state = State.INIT;
 		while (isNavigating)
 		{
@@ -140,30 +112,6 @@ public class Navigation extends Thread
 					state = State.INIT;
 				}
 				break;
-			case WALL:
-				isCorrecting = false;
-/*				setSpeeds(forwardSpeed, forwardSpeed);
-				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
-				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
-
-				headMotor.rotate(-45);
-
-				avoidance = new ObstacleAvoidance(this, nowX, nowY, nowTheta, odometer,leftMotor, rightMotor,bandCenter, bandWidth,
-						motorLow, motorHigh, usSampleProvider);
-				avoidance.start(); 
-				try 
-				{
-					avoidance.join();
-				} catch (InterruptedException e1) 
-				{
-					e1.printStackTrace();
-				}
-
-				leftMotor.rotate(convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2), true);
-				rightMotor.rotate(-convertAngle(Main.rWheel, Main.dBase, (Math.PI)/2));
-				headMotor.rotate(45);*/
-				state = State.INIT;
-				break;
 			}
 			try
 			{
@@ -176,13 +124,6 @@ public class Navigation extends Thread
 		}
 	}
 
-
-/*	private boolean checkEmergency() { //checking if it's too close to the wall
-		if(usDistance <= 20)
-			return true;
-		else 
-			return false;
-	}*/
 	private void updateTravel() //update the destination angle of the next "cycle" of travel
 	{
 		destTheta = getDestAngle();
