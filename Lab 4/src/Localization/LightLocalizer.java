@@ -4,7 +4,7 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.robotics.SampleProvider;
 
 public class LightLocalizer {
-	private int forwardSpeed = 200;
+	private int forwardSpeed = 100;
 	
 	private Odometer odo;
 	
@@ -27,11 +27,10 @@ public class LightLocalizer {
 	private EV3LargeRegulatedMotor leftMotor;
 	private EV3LargeRegulatedMotor rightMotor;
 	
-	private double lightDist = 16; //distance between center of wheelbase and light sensor
+	private double lightDist = 16.4; //distance between center of wheelbase and light sensor
 	public static double rWheel = Lab4.rWheel;
 	public static double dBase = Lab4.dBase;
-	public static int motorLow = 100;
-	public static int motorHigh = 200;
+	
 	private static Navigation nav;
 
 	public LightLocalizer(Odometer odo, SampleProvider colorSensor, float[] colorData) 
@@ -94,33 +93,42 @@ public class LightLocalizer {
 				System.out.println("ERROR");
 			}
 		}
-
-		for(double i : thetaOfLines) //printer to debug
-		{
-			System.out.println(i);
-		}
 		
 		Lab4.rightMotor.stop();
 		Lab4.leftMotor.stop();
 		
 		//calculating the x position
 		thetaY = thetaOfLines[3]-thetaOfLines[1]; //thetaY2 - thetaY1
-		posX = -(lightDist)*Math.cos((thetaY)/2);
+		posX = -(lightDist)*Math.cos(0.5*(thetaY));
 
 		//calculating the y position
 		thetaX = thetaOfLines[2]-thetaOfLines[0]; //thetaX2 - thetaX1
-		posY = -(lightDist)*Math.cos((thetaX)/2);
+		posY = -(lightDist)*Math.cos(0.5*(thetaX));
 		
-		System.out.println("posX: " + posX + " posY: " + posY); //printer to debug
+		//correction of robot's heading
+		double turnToAngle = 0;
+		
+		turnToAngle = thetaOfLines[3] + Math.PI + Math.abs(0.5*thetaY);
+		//turnToAngle  = (-1/2*Math.PI)+(thetaOfLines[3]-Math.PI)-((thetaY)/2);
+		System.out.println("turnToAngle: " + turnToAngle *57.296);
+		System.out.println("posX: " + posX);
+		System.out.println("posY: " + posY);
+		odo.setTheta(turnToAngle+odo.getTheta());
 		
 		//call navigation and make the robot move to point 0.0
 		nav.start();
-		nav.travelTo(-posX,-posY);
 		
+		odo.setX(posX);
+		odo.setY(posY);
+		
+		nav.travelTo(0, 0);
+		
+		/*nav.travelTo(-posX,-posY);
+		*/
 		nav.join();
 		
 		turnTo(0);
-		
+		odo.setPosition(new double[]{0,0,0}, new boolean[]{true,true,true});
 		System.out.println("DONE");
 	}
 	private void rotate(double turnTheta) //rotates turnTheta cw
@@ -163,7 +171,6 @@ public class LightLocalizer {
 		else if(turnTheta>Math.PI && turnTheta < 2*Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
-			System.out.println("b");
 		}
 		else
 		{

@@ -4,7 +4,7 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 
 public class Navigation extends Thread
 {
-	private int forwardSpeed = 150;
+	private int forwardSpeed = 100;
 	
 	//destination variables
 	private double[] destDistance = new double[2];
@@ -231,12 +231,10 @@ public class Navigation extends Thread
 		else if(turnTheta < -Math.PI && turnTheta > -2*Math.PI)
 		{
 			turnTheta = turnTheta + 2*Math.PI;
-			System.out.println("a");
 		}
 		else if(turnTheta>Math.PI && turnTheta < 2*Math.PI)
 		{
 			turnTheta = turnTheta - 2*Math.PI;
-			System.out.println("b");
 		}
 		else
 		{

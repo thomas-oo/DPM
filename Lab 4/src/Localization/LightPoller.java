@@ -32,7 +32,7 @@ public class LightPoller extends Thread
 		while(Lab4.leftMotor.isMoving())
 		{
 			getColorValue();
-			if (colorValue < 0.3 && count < 7) //buffer so a line isn't detected sporadically
+			if (colorValue < 0.3 && count < 5) //buffer so a line isn't detected sporadically
 			{
 				count++;
 				blackLineDetected = false;
@@ -43,7 +43,6 @@ public class LightPoller extends Thread
 				Sound.beep();
 				
 				thetaOfLines[index] = odo.getTheta(); //store the theta reading of the odometer into the array at the current index
-				System.out.println(odo.getTheta());
 				
 				blackLineDetected  = true; //raise flag
 			}

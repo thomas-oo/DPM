@@ -4,7 +4,6 @@ import lejos.hardware.*;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.Port;
-import lejos.hardware.port.UARTPort;
 import lejos.hardware.sensor.*;
 import lejos.robotics.SampleProvider;
 import Localization.LCDInfo;
@@ -22,7 +21,7 @@ public class Lab4 {
 	
 	//Specs of robot
 	public static double rWheel = 2.1;
-	public static double dBase = 16.2;
+	public static double dBase = 15.7;
 
 	
 	public static void main(String[] args) throws InterruptedException {
